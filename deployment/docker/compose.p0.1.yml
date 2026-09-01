@@ -1,0 +1,90 @@
+name: drishti-p01
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-drishti_registry}
+      POSTGRES_USER: ${POSTGRES_USER:-drishti_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env before starting Compose}
+    volumes:
+      - drishti_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - drishti_registry
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: deployment/docker/backend.Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_NAME: ${APP_NAME:-Drishti AI Camera Registry}
+      API_V1_PREFIX: ${API_V1_PREFIX:-/api/v1}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-drishti_app}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env before starting Compose}@postgres:5432/${POSTGRES_DB:-drishti_registry}
+      AUTO_CREATE_SCHEMA: "false"
+      DB_ECHO: ${DB_ECHO:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        cd apps/backend &&
+        python -m alembic upgrade head &&
+        exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import json,sys,urllib.request; data=json.load(urllib.request.urlopen('http://localhost:8000/health/ready', timeout=3)); sys.exit(0 if data.get('status') == 'ready' else 1)
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - drishti_registry
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: deployment/docker/frontend.Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+        VITE_MAP_TILE_URL: "${VITE_MAP_TILE_URL:-}"
+        VITE_MAP_ATTRIBUTION: "${VITE_MAP_ATTRIBUTION:-}"
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5173}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - drishti_registry
+
+volumes:
+  drishti_postgres_data:
+
+networks:
+  drishti_registry:
+    driver: bridge

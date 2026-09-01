@@ -1,0 +1,68 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+# Google service-account credentials (never commit these files)
+visitingfaculty-499513-2c2073ffd622.json
+service-account*.json
+google-credentials*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+.venv/
+venv/
+.pytest_cache/
+.pytest-*/
+.test-runtime/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Local databases and runtime evidence
+*.db
+*.sqlite
+*.sqlite3
+data/
+runtime/
+.runtime/
+evidence/
+uploads/
+# Reproducible local inference output; keep source fixtures only when explicitly needed.
+runs/
+
+# Local stream experiments may contain sensitive camera/network topology
+test.py
+
+# JavaScript
+node_modules/
+.vite/
+.next/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+tmp/

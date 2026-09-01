@@ -1,0 +1,46 @@
+{
+  "active_detector": {
+    "model_id": "MDL-ANPR-001",
+    "file": "license_plate_detector.pt",
+    "sha256": "8ec3b254a6c87610f037a90957462cafa11a9c03224e33a28c6a1d1ac2ac51b0",
+    "validation_status": "imported_baseline_pending_project_validation"
+  },
+  "general_detector": {
+    "model_id": "MDL-VEH-001",
+    "file": "yolo26n.pt",
+    "sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+    "validation_status": "upstream_baseline"
+  },
+  "ocr_provider": {
+    "model_id": "SVC-OCR-HYBRID-001",
+    "name": "hybrid-google-groq",
+    "primary": {
+      "provider": "google-cloud-vision",
+      "feature": "DOCUMENT_TEXT_DETECTION",
+      "accept_confidence": 0.86,
+      "authentication": "application-default-credentials"
+    },
+    "fallback": {
+      "provider": "groq",
+      "model": "qwen/qwen3.6-27b",
+      "accept_confidence": 0.82,
+      "activation": "invalid-or-low-confidence-google-read"
+    },
+    "conflict_policy": "quarantine-for-officer-review",
+    "remote_processing": true
+  },
+  "visual_intelligence_provider": {
+    "model_id": "SVC-VLM-001",
+    "name": "groq",
+    "model": "qwen/qwen3.6-27b",
+    "prompt_version": "vehicle_visual_profile_v1",
+    "remote_processing": true
+  },
+  "execution_pipeline": [
+    "MDL-VEH-001",
+    "MDL-ANPR-001",
+    "SVC-OCR-HYBRID-001",
+    "SVC-VLM-001"
+  ],
+  "disclosure": "The checksum-verified .pt checkpoints are the active vehicle and plate detectors. Cropped plates use Google Cloud Vision as the fast primary OCR provider and selectively use Groq for uncertain reads. Conflicting candidates are quarantined and cannot trigger investigation or watchlist actions. Retained vehicle crops may also be sent to Groq for structured visual enrichment; provider billing, quota, outbound network availability, human review, and data-governance controls apply."
+}
