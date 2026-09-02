@@ -619,6 +619,9 @@ class AIShowcaseStore:
                     if row[f"{prefix}_ocr_error"]
                     else "completed"
                     if row[f"{prefix}_ocr_raw_text"] or row[f"{prefix}_ocr_text"]
+                    else "no_text"
+                    if row[f"{prefix}_ocr_confidence"] is not None
+                    or row[f"{prefix}_ocr_processing_ms"] is not None
                     else "not_invoked"
                 ),
                 raw_text=row[f"{prefix}_ocr_raw_text"] or None,

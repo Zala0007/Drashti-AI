@@ -149,3 +149,64 @@ def test_ai_showcase_is_graceful_when_evidence_database_is_absent(
     assert client.get("/api/v1/ai/overview").json()["available"] is False
     assert client.get("/api/v1/ai/detections").json()["items"] == []
     assert client.get("/api/v1/ai/plates").json()["items"] == []
+
+
+def test_ai_showcase_hybrid_ocr_candidate_statuses(
+    client: TestClient, tmp_path: Path
+) -> None:
+    evidence = tmp_path / "crops.db"
+    conn = sqlite3.connect(evidence)
+    conn.executescript(
+        """
+        CREATE TABLE detections (
+            id INTEGER PRIMARY KEY, source TEXT, frame INTEGER, time_ms REAL,
+            track_id INTEGER, class_id INTEGER, class_name TEXT, confidence REAL,
+            x1 REAL, y1 REAL, x2 REAL, y2 REAL, width INTEGER, height INTEGER,
+            crop BLOB, created_at TEXT
+        );
+        CREATE TABLE plate_detections (
+            id INTEGER PRIMARY KEY, source_detection_id INTEGER, source TEXT,
+            frame INTEGER, time_ms REAL, track_id INTEGER, plate_text TEXT,
+            ocr_confidence REAL, detection_confidence REAL, x1 REAL, y1 REAL,
+            x2 REAL, y2 REAL, width INTEGER, height INTEGER, crop BLOB,
+            ocr_provider TEXT, ocr_status TEXT, google_ocr_raw_text TEXT,
+            google_ocr_text TEXT, google_ocr_confidence REAL,
+            google_ocr_processing_ms REAL, google_ocr_error TEXT,
+            groq_ocr_raw_text TEXT, groq_ocr_text TEXT, groq_ocr_confidence REAL,
+            groq_ocr_processing_ms REAL, groq_ocr_error TEXT,
+            ocr_selected_provider TEXT, ocr_decision TEXT, ocr_decision_reason TEXT,
+            ocr_review_required INTEGER, created_at TEXT
+        );
+        INSERT INTO plate_detections (
+            id, source, frame, time_ms, track_id, plate_text, ocr_confidence,
+            detection_confidence, x1, y1, x2, y2, width, height, crop, ocr_provider,
+            ocr_status, google_ocr_raw_text, google_ocr_text, google_ocr_confidence,
+            google_ocr_processing_ms, groq_ocr_raw_text, groq_ocr_text,
+            groq_ocr_confidence, groq_ocr_processing_ms, ocr_decision,
+            ocr_decision_reason, ocr_review_required, created_at
+        ) VALUES (
+            1, 'C:\\test.mp4', 10, 1000, 1, NULL, 0.0, 0.8, 10, 20, 80, 40, 70, 20,
+            ?, 'hybrid-ocr:unresolved', 'REVIEW_REQUIRED', '', '', 0.0, 517.0,
+            '', '', 0.0, 19579.0, 'review_required',
+            'Neither provider produced a format-valid registration.', 1, '2026-08-31 10:00:00'
+        );
+        """
+    )
+    conn.execute("UPDATE plate_detections SET crop = ?", (JPEG,))
+    conn.commit()
+    conn.close()
+
+    client.app.dependency_overrides[get_ai_showcase] = lambda: AIShowcaseStore(evidence, "/api/v1")
+    res = client.get("/api/v1/ai/plates")
+    assert res.status_code == 200
+    items = res.json()["items"]
+    assert len(items) == 1
+    candidates = items[0]["ocr_candidates"]
+    google_cand = next(c for c in candidates if c["provider"] == "Google Cloud Vision")
+    groq_cand = next(c for c in candidates if c["provider"] == "Groq")
+
+    assert google_cand["status"] == "no_text"
+    assert google_cand["processing_ms"] == 517.0
+    assert groq_cand["status"] == "no_text"
+    assert groq_cand["processing_ms"] == 19579.0
+
