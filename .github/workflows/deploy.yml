@@ -39,7 +39,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s' "$DEPLOY_SSH_KEY" | tr -d '\r' | sed 's/\\n/\n/g' > ~/.ssh/drishti_deploy_key
+          printf '%b\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/drishti_deploy_key
           chmod 600 ~/.ssh/drishti_deploy_key
           ssh-keygen -y -f ~/.ssh/drishti_deploy_key > /dev/null
           touch ~/.ssh/known_hosts
