@@ -85,3 +85,57 @@ def test_valid_groq_only_result_can_recover_a_failed_google_request() -> None:
     assert result.accepted_text == "MH12DE1433"
     assert result.provider == "groq"
     assert result.needs_fallback is False
+
+
+def test_groq_plate_ocr_switches_key_on_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import MagicMock
+    from app.analytics.ocr import GroqPlateOCR
+
+    # Mock groq module
+    call_log = []
+
+    class MockCompletion:
+        def __init__(self, key: str):
+            self.key = key
+
+        def create(self, **kwargs):
+            call_log.append(self.key)
+            if self.key == "key-1":
+                raise RuntimeError("Rate limit reached: 429 Too Many Requests")
+            msg = MagicMock()
+            msg.content = '{"raw_text": "GJ01AB1234", "plate_text": "GJ01AB1234", "confidence": 0.95}'
+            choice = MagicMock()
+            choice.message = msg
+            res = MagicMock()
+            res.choices = [choice]
+            return res
+
+    class MockGroq:
+        def __init__(self, api_key: str, **kwargs):
+            self.api_key = api_key
+            self.chat = MagicMock()
+            self.chat.completions = MockCompletion(api_key)
+
+    monkeypatch.setattr("groq.Groq", MockGroq)
+
+    ocr = GroqPlateOCR(
+        api_keys=("key-1", "key-2", "key-3"),
+        model="qwen/qwen3.6-27b",
+        timeout=10.0,
+        max_retries=1,
+    )
+
+    dummy_jpeg = b"\xff\xd8\xff\xd9"
+    # Create valid JPEG image bytes
+    from PIL import Image
+    import io
+    img = Image.new("RGB", (100, 50), color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    crop_bytes = buf.getvalue()
+
+    reading = ocr.recognize(crop_bytes)
+    assert reading.text == "GJ01AB1234"
+    assert reading.confidence == 0.95
+    assert call_log == ["key-1", "key-2"]
+

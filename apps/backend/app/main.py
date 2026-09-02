@@ -159,6 +159,7 @@ def create_app(
             ),
             groq_ocr_enabled=app_settings.live_analytics_groq_ocr_enabled,
             groq_api_key=app_settings.groq_api_key,
+            groq_api_keys=app_settings.groq_api_keys,
             groq_model=app_settings.groq_vision_model,
             groq_timeout_seconds=app_settings.groq_request_timeout,
             groq_max_retries=app_settings.groq_max_retries,
@@ -169,10 +170,13 @@ def create_app(
         ),
     )
     visual_provider = None
-    if app_settings.visual_intelligence_enabled and app_settings.groq_api_key:
+    has_groq_keys = bool(app_settings.groq_api_keys or app_settings.groq_api_key)
+    if app_settings.visual_intelligence_enabled and has_groq_keys:
         try:
             visual_provider = GroqVisionProvider(
-                api_key=app_settings.groq_api_key,
+                api_keys=app_settings.groq_api_keys or (
+                    (app_settings.groq_api_key,) if app_settings.groq_api_key else ()
+                ),
                 model=app_settings.groq_vision_model,
                 timeout=app_settings.groq_request_timeout,
                 max_retries=app_settings.groq_max_retries,

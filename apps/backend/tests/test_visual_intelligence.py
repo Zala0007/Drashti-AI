@@ -156,3 +156,68 @@ def test_backfill_advances_past_completed_representatives(tmp_path: Path) -> Non
         assert engine.status().completed == 2
     finally:
         engine.shutdown()
+
+
+def test_groq_vision_provider_switches_key_on_rate_limit(monkeypatch) -> None:
+    from unittest.mock import MagicMock
+    from app.services.visual_intelligence import GroqVisionProvider
+
+    call_log = []
+
+    class MockCompletion:
+        def __init__(self, key: str):
+            self.key = key
+
+        def create(self, **kwargs):
+            call_log.append(self.key)
+            if self.key == "key-1":
+                raise RuntimeError("429 Too Many Requests: Rate limit exceeded")
+            msg = MagicMock()
+            msg.content = """
+            {
+                "vehicle_present": true,
+                "vehicle_type": "car",
+                "vehicle_type_confidence": "high",
+                "primary_color": "white",
+                "secondary_colors": [],
+                "visual_condition": "clean",
+                "damage_present": "none_obvious",
+                "damage_regions": [],
+                "distinctive_features": [],
+                "accessories": [],
+                "vehicle_view": "front",
+                "plate_visibility": "readable",
+                "lighting_condition": "daylight",
+                "image_quality": "good",
+                "occlusion": "none",
+                "search_keywords": ["white", "car"],
+                "short_description": "White car.",
+                "detailed_description": "A white car.",
+                "analysis_confidence": "high"
+            }
+            """
+            choice = MagicMock()
+            choice.message = msg
+            res = MagicMock()
+            res.choices = [choice]
+            return res
+
+    class MockGroq:
+        def __init__(self, api_key: str, **kwargs):
+            self.api_key = api_key
+            self.chat = MagicMock()
+            self.chat.completions = MockCompletion(api_key)
+
+    monkeypatch.setattr("groq.Groq", MockGroq)
+
+    provider = GroqVisionProvider(
+        api_keys=("key-1", "key-2"),
+        model="qwen/qwen3.6-27b",
+        timeout=10.0,
+        max_retries=1,
+    )
+
+    profile = provider.analyze_vehicle(b"dummy-image")
+    assert profile.primary_color == "white"
+    assert call_log == ["key-1", "key-2"]
+

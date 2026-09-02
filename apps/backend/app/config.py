@@ -67,6 +67,22 @@ def _as_bounded_int(
     return parsed
 
 
+def _load_groq_api_keys() -> tuple[str, ...]:
+    keys: list[str] = []
+    for i in range(1, 20):
+        val = os.getenv(f"GROQ_API_KEY_{i}", "").strip()
+        if val and val not in keys:
+            keys.append(val)
+    for env_var in ("GROQ_API_KEY", "GROQ_API_KEYS"):
+        raw = os.getenv(env_var, "").strip()
+        if raw:
+            for part in raw.replace(";", ",").split(","):
+                part = part.strip()
+                if part and part not in keys:
+                    keys.append(part)
+    return tuple(keys)
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     app_name: str = "Drishti AI Camera Registry"
@@ -118,6 +134,7 @@ class Settings:
     live_analytics_groq_accept_confidence: float = 0.82
     live_analytics_groq_ocr_request_interval_seconds: float = 0.5
     groq_api_key: str | None = None
+    groq_api_keys: tuple[str, ...] = ()
     groq_vision_model: str = "qwen/qwen3.6-27b"
     groq_request_timeout: float = 45.0
     groq_max_retries: int = 2
@@ -346,7 +363,8 @@ class Settings:
                 maximum=60.0,
                 name="LIVE_ANALYTICS_GROQ_OCR_REQUEST_INTERVAL_SECONDS",
             ),
-            groq_api_key=os.getenv("GROQ_API_KEY", "").strip() or None,
+            groq_api_key=_load_groq_api_keys()[0] if _load_groq_api_keys() else None,
+            groq_api_keys=_load_groq_api_keys(),
             groq_vision_model=(
                 os.getenv("GROQ_VISION_MODEL", "qwen/qwen3.6-27b").strip() or "qwen/qwen3.6-27b"
             ),

@@ -3,10 +3,13 @@ from __future__ import annotations
 import base64
 import io
 import json
+import logging
 import re
 import time
 from dataclasses import dataclass
 from typing import Any
+
+logger = logging.getLogger("drishti.ocr")
 
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
@@ -312,65 +315,134 @@ class GooglePlateOCR:
         return self.recognize_batch([crop])[0]
 
 
+def is_groq_rate_limit(exc: Exception) -> bool:
+    try:
+        from groq import RateLimitError
+        if isinstance(exc, RateLimitError):
+            return True
+    except ImportError:
+        pass
+    if getattr(exc, "status_code", None) == 429:
+        return True
+    msg = str(exc).lower()
+    return (
+        "rate limit" in msg
+        or "429" in msg
+        or "rate_limit_exceeded" in msg
+        or "tokens per" in msg
+        or "requests per" in msg
+        or "quota" in msg
+    )
+
+
 class GroqPlateOCR:
     provider = "groq"
 
-    def __init__(self, *, api_key: str, model: str, timeout: float, max_retries: int) -> None:
+    def __init__(
+        self,
+        *,
+        api_key: str | None = None,
+        api_keys: tuple[str, ...] | list[str] | None = None,
+        model: str,
+        timeout: float,
+        max_retries: int,
+    ) -> None:
         try:
             from groq import Groq
         except ImportError as exc:
             raise RuntimeError("The groq package is not installed") from exc
+        
+        resolved_keys: list[str] = []
+        if api_keys:
+            resolved_keys.extend([k.strip() for k in api_keys if k and k.strip()])
+        elif api_key and api_key.strip():
+            resolved_keys.append(api_key.strip())
+        
+        if not resolved_keys:
+            raise RuntimeError("At least one valid Groq API key is required")
+
         self.model = model
-        self._client = Groq(api_key=api_key, timeout=timeout, max_retries=max_retries)
+        self._timeout = timeout
+        self._max_retries = max_retries
+        self._api_keys = resolved_keys
+        self._clients = [
+            Groq(api_key=key, timeout=timeout, max_retries=max_retries)
+            for key in resolved_keys
+        ]
+        self._active_index = 0
 
     def recognize(self, crop: bytes) -> OCRReading:
         started = time.perf_counter()
         encoded = base64.b64encode(prepare_plate_crop(crop)).decode("ascii")
-        completion = self._client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a strict vehicle-registration OCR reader. Read only characters "
-                        "visibly printed on the actual plate. Ignore reflections and shadows. "
-                        "Never infer hidden characters."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": [
+        total_keys = len(self._clients)
+        last_exc: Exception | None = None
+
+        for attempt in range(total_keys):
+            client_idx = (self._active_index + attempt) % total_keys
+            client = self._clients[client_idx]
+            try:
+                completion = client.chat.completions.create(
+                    model=self.model,
+                    messages=[
                         {
-                            "type": "text",
-                            "text": (
-                                "Return JSON with raw_text, plate_text, and confidence from 0 to "
-                                "1. Use empty strings and confidence 0 when unreadable."
+                            "role": "system",
+                            "content": (
+                                "You are a strict vehicle-registration OCR reader. Read only characters "
+                                "visibly printed on the actual plate. Ignore reflections and shadows. "
+                                "Never infer hidden characters."
                             ),
                         },
                         {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{encoded}"},
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": (
+                                        "Return JSON with raw_text, plate_text, and confidence from 0 to "
+                                        "1. Use empty strings and confidence 0 when unreadable."
+                                    ),
+                                },
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": f"data:image/jpeg;base64,{encoded}"},
+                                },
+                            ],
                         },
                     ],
-                },
-            ],
-            response_format={"type": "json_object"},
-            reasoning_effort="none",
-            reasoning_format="hidden",
-            temperature=0,
-            top_p=0.8,
-            max_completion_tokens=256,
-            stream=False,
-        )
-        content = completion.choices[0].message.content or "{}"
-        parsed: dict[str, Any] = json.loads(
-            re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip())
-        )
-        plate_text = str(parsed.get("plate_text") or parsed.get("raw_text") or "")
-        return OCRReading(
-            provider=self.provider,
-            text=plate_text,
-            raw_text=str(parsed.get("raw_text") or plate_text),
-            confidence=min(1.0, max(0.0, float(parsed.get("confidence") or 0))),
-            processing_ms=(time.perf_counter() - started) * 1000,
-        )
+                    response_format={"type": "json_object"},
+                    reasoning_effort="none",
+                    reasoning_format="hidden",
+                    temperature=0,
+                    top_p=0.8,
+                    max_completion_tokens=256,
+                    stream=False,
+                )
+                if client_idx != self._active_index:
+                    logger.info("Groq OCR switched active API key index to %d", client_idx)
+                    self._active_index = client_idx
+                content = completion.choices[0].message.content or "{}"
+                parsed: dict[str, Any] = json.loads(
+                    re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip())
+                )
+                plate_text = str(parsed.get("plate_text") or parsed.get("raw_text") or "")
+                return OCRReading(
+                    provider=self.provider,
+                    text=plate_text,
+                    raw_text=str(parsed.get("raw_text") or plate_text),
+                    confidence=min(1.0, max(0.0, float(parsed.get("confidence") or 0))),
+                    processing_ms=(time.perf_counter() - started) * 1000,
+                )
+            except Exception as exc:
+                last_exc = exc
+                if is_groq_rate_limit(exc) and attempt < total_keys - 1:
+                    next_idx = (self._active_index + attempt + 1) % total_keys
+                    logger.warning(
+                        "Groq OCR API key at index %d hit rate limit (%s); switching to key index %d",
+                        client_idx,
+                        type(exc).__name__,
+                        next_idx,
+                    )
+                    continue
+                raise
+        if last_exc:
+            raise last_exc
