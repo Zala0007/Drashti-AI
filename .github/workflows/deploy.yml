@@ -44,8 +44,7 @@ jobs:
           from pathlib import Path
 
           key = os.environ["DEPLOY_SSH_KEY"].replace("\r", "")
-          if "\\n" in key and "\n" not in key:
-              key = key.replace("\\n", "\n")
+          key = key.replace("\\n", "\n")
           if not key.endswith("\n"):
               key += "\n"
           Path.home().joinpath(".ssh", "drishti_deploy_key").write_text(key)
@@ -59,8 +58,13 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
         run: |
-          DEPLOY_HOST_CLEAN="$(printf '%s' "$DEPLOY_HOST" | tr -d '\r\n')"
-          DEPLOY_USER_CLEAN="$(printf '%s' "$DEPLOY_USER" | tr -d '\r\n')"
+          DEPLOY_HOST_CLEAN="$(printf '%s' "$DEPLOY_HOST" | tr -d '\r\n' | sed -e 's/\\r//g' -e 's/\\n//g')"
+          DEPLOY_USER_CLEAN="$(printf '%s' "$DEPLOY_USER" | tr -d '\r\n' | sed -e 's/\\r//g' -e 's/\\n//g')"
+
+          if [ -z "$DEPLOY_HOST_CLEAN" ] || [ -z "$DEPLOY_USER_CLEAN" ]; then
+            echo "DEPLOY_HOST or DEPLOY_USER is empty after normalization."
+            exit 1
+          fi
 
           ssh \
             -i ~/.ssh/drishti_deploy_key \
