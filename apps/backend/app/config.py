@@ -363,7 +363,6 @@ class Settings:
                 maximum=60.0,
                 name="LIVE_ANALYTICS_GROQ_OCR_REQUEST_INTERVAL_SECONDS",
             ),
-            groq_api_key=os.getenv("GROQ_API_KEY", "").strip() or None,
             groq_api_key=_load_groq_api_keys()[0] if _load_groq_api_keys() else None,
             groq_api_keys=_load_groq_api_keys(),
             groq_vision_model=(

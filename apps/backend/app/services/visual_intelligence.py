@@ -169,7 +169,6 @@ def _is_groq_rate_limit(exc: Exception) -> bool:
 class GroqVisionProvider(VisionIntelligenceProvider):
     name = "groq"
 
-    def __init__(self, *, api_key: str, model: str, timeout: float, max_retries: int) -> None:
     def __init__(
         self,
         *,
@@ -186,18 +185,13 @@ class GroqVisionProvider(VisionIntelligenceProvider):
 
         resolved_keys: list[str] = []
         if api_keys:
-            resolved_keys.extend([k.strip() for k in api_keys if k and k.strip()])
+            resolved_keys.extend([key.strip() for key in api_keys if key and key.strip()])
         elif api_key and api_key.strip():
             resolved_keys.append(api_key.strip())
-
         if not resolved_keys:
             raise RuntimeError("At least one valid Groq API key is required")
 
         self.model = model
-        self._client = Groq(api_key=api_key, timeout=timeout, max_retries=max_retries)
-        self._timeout = timeout
-        self._max_retries = max_retries
-        self._api_keys = resolved_keys
         self._clients = [
             Groq(api_key=key, timeout=timeout, max_retries=max_retries)
             for key in resolved_keys
@@ -206,28 +200,17 @@ class GroqVisionProvider(VisionIntelligenceProvider):
 
     def analyze_vehicle(self, image: bytes) -> VehicleVisualProfile:
         encoded = base64.b64encode(image).decode("ascii")
-        completion = self._client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": VEHICLE_SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": VEHICLE_USER_PROMPT},
         total_keys = len(self._clients)
         last_exc: Exception | None = None
 
         for attempt in range(total_keys):
             client_idx = (self._active_index + attempt) % total_keys
-            client = self._clients[client_idx]
             try:
-                completion = client.chat.completions.create(
+                completion = self._clients[client_idx].chat.completions.create(
                     model=self.model,
                     messages=[
                         {"role": "system", "content": VEHICLE_SYSTEM_PROMPT},
                         {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{encoded}"},
                             "role": "user",
                             "content": [
                                 {"type": "text", "text": VEHICLE_USER_PROMPT},
@@ -238,19 +221,6 @@ class GroqVisionProvider(VisionIntelligenceProvider):
                             ],
                         },
                     ],
-                },
-            ],
-            response_format={"type": "json_object"},
-            reasoning_effort="none",
-            reasoning_format="hidden",
-            temperature=0.2,
-            top_p=0.8,
-            max_completion_tokens=1400,
-            stream=False,
-        )
-        content = completion.choices[0].message.content or ""
-        content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip())
-        return VehicleVisualProfile.model_validate(json.loads(content))
                     response_format={"type": "json_object"},
                     reasoning_effort="none",
                     reasoning_format="hidden",
@@ -259,29 +229,19 @@ class GroqVisionProvider(VisionIntelligenceProvider):
                     max_completion_tokens=1400,
                     stream=False,
                 )
-                if client_idx != self._active_index:
-                    logger.info("Groq Vision switched active API key index to %d", client_idx)
-                    self._active_index = client_idx
+                self._active_index = client_idx
                 content = completion.choices[0].message.content or ""
                 content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip())
                 return VehicleVisualProfile.model_validate(json.loads(content))
             except Exception as exc:
                 last_exc = exc
                 if _is_groq_rate_limit(exc) and attempt < total_keys - 1:
-                    next_idx = (self._active_index + attempt + 1) % total_keys
-                    logger.warning(
-                        "Groq Vision API key at index %d hit rate limit (%s); switching to key index %d",
-                        client_idx,
-                        type(exc).__name__,
-                        next_idx,
-                    )
                     continue
                 raise
         if last_exc:
             raise last_exc
 
     def health_check(self) -> bool:
-        return bool(self.model)
         return bool(self.model and self._clients)
 
 
