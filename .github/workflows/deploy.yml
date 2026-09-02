@@ -30,7 +30,7 @@ jobs:
 
       - name: Validate Docker Compose
         run: |
-          docker compose \
+          POSTGRES_PASSWORD=ci-validation-only docker compose \
             -f deployment/docker/compose.p0.3.yml \
             -f deployment/docker/compose.gpu.yml \
             -f deployment/docker/compose.https.yml \
