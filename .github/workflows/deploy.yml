@@ -1,0 +1,82 @@
+name: Drishti AI CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  ci:
+    name: CI - Build Docker Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: |
+          docker build \
+            -f deployment/docker/backend.Dockerfile \
+            -t drishti-ai-backend-ci .
+
+      - name: Build frontend image
+        run: |
+          docker build \
+            -f deployment/docker/frontend.Dockerfile \
+            -t drishti-ai-frontend-ci .
+
+  deploy:
+    name: CD - Deploy to GCP VM
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/drishti_deploy_key
+          chmod 600 ~/.ssh/drishti_deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy Drishti AI
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh \
+            -i ~/.ssh/drishti_deploy_key \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            'bash -se' <<'REMOTE'
+              set -e
+
+              cd ~/Drashti-AI
+
+              echo "Pulling latest code..."
+              git pull --ff-only origin main
+
+              echo "Building and starting services..."
+              docker compose --env-file .env \
+                -f deployment/docker/compose.p0.3.yml \
+                -f deployment/docker/compose.gpu.yml \
+                up -d --build
+
+              echo "Waiting for services..."
+              sleep 15
+
+              echo "Checking service health..."
+              docker compose --env-file .env \
+                -f deployment/docker/compose.p0.3.yml \
+                -f deployment/docker/compose.gpu.yml \
+                ps
+
+              echo "Checking application..."
+              curl --fail --silent \
+                http://127.0.0.1:80/api/v1/health > /dev/null
+
+              echo "Deployment successful."
+          REMOTE
