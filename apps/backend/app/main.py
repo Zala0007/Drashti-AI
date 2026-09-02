@@ -170,10 +170,12 @@ def create_app(
         ),
     )
     visual_provider = None
+    if app_settings.visual_intelligence_enabled and app_settings.groq_api_key:
     has_groq_keys = bool(app_settings.groq_api_keys or app_settings.groq_api_key)
     if app_settings.visual_intelligence_enabled and has_groq_keys:
         try:
             visual_provider = GroqVisionProvider(
+                api_key=app_settings.groq_api_key,
                 api_keys=app_settings.groq_api_keys or (
                     (app_settings.groq_api_key,) if app_settings.groq_api_key else ()
                 ),

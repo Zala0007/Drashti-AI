@@ -169,6 +169,7 @@ def _is_groq_rate_limit(exc: Exception) -> bool:
 class GroqVisionProvider(VisionIntelligenceProvider):
     name = "groq"
 
+    def __init__(self, *, api_key: str, model: str, timeout: float, max_retries: int) -> None:
     def __init__(
         self,
         *,
@@ -193,6 +194,7 @@ class GroqVisionProvider(VisionIntelligenceProvider):
             raise RuntimeError("At least one valid Groq API key is required")
 
         self.model = model
+        self._client = Groq(api_key=api_key, timeout=timeout, max_retries=max_retries)
         self._timeout = timeout
         self._max_retries = max_retries
         self._api_keys = resolved_keys
@@ -204,6 +206,14 @@ class GroqVisionProvider(VisionIntelligenceProvider):
 
     def analyze_vehicle(self, image: bytes) -> VehicleVisualProfile:
         encoded = base64.b64encode(image).decode("ascii")
+        completion = self._client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": VEHICLE_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": VEHICLE_USER_PROMPT},
         total_keys = len(self._clients)
         last_exc: Exception | None = None
 
@@ -216,6 +226,8 @@ class GroqVisionProvider(VisionIntelligenceProvider):
                     messages=[
                         {"role": "system", "content": VEHICLE_SYSTEM_PROMPT},
                         {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{encoded}"},
                             "role": "user",
                             "content": [
                                 {"type": "text", "text": VEHICLE_USER_PROMPT},
@@ -226,6 +238,19 @@ class GroqVisionProvider(VisionIntelligenceProvider):
                             ],
                         },
                     ],
+                },
+            ],
+            response_format={"type": "json_object"},
+            reasoning_effort="none",
+            reasoning_format="hidden",
+            temperature=0.2,
+            top_p=0.8,
+            max_completion_tokens=1400,
+            stream=False,
+        )
+        content = completion.choices[0].message.content or ""
+        content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip())
+        return VehicleVisualProfile.model_validate(json.loads(content))
                     response_format={"type": "json_object"},
                     reasoning_effort="none",
                     reasoning_format="hidden",
@@ -256,6 +281,7 @@ class GroqVisionProvider(VisionIntelligenceProvider):
             raise last_exc
 
     def health_check(self) -> bool:
+        return bool(self.model)
         return bool(self.model and self._clients)
 
 

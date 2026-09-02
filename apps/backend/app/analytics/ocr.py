@@ -338,6 +338,7 @@ def is_groq_rate_limit(exc: Exception) -> bool:
 class GroqPlateOCR:
     provider = "groq"
 
+    def __init__(self, *, api_key: str, model: str, timeout: float, max_retries: int) -> None:
     def __init__(
         self,
         *,
@@ -362,6 +363,7 @@ class GroqPlateOCR:
             raise RuntimeError("At least one valid Groq API key is required")
 
         self.model = model
+        self._client = Groq(api_key=api_key, timeout=timeout, max_retries=max_retries)
         self._timeout = timeout
         self._max_retries = max_retries
         self._api_keys = resolved_keys
@@ -374,6 +376,20 @@ class GroqPlateOCR:
     def recognize(self, crop: bytes) -> OCRReading:
         started = time.perf_counter()
         encoded = base64.b64encode(prepare_plate_crop(crop)).decode("ascii")
+        completion = self._client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a strict vehicle-registration OCR reader. Read only characters "
+                        "visibly printed on the actual plate. Ignore reflections and shadows. "
+                        "Never infer hidden characters."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": [
         total_keys = len(self._clients)
         last_exc: Exception | None = None
 
@@ -385,6 +401,10 @@ class GroqPlateOCR:
                     model=self.model,
                     messages=[
                         {
+                            "type": "text",
+                            "text": (
+                                "Return JSON with raw_text, plate_text, and confidence from 0 to "
+                                "1. Use empty strings and confidence 0 when unreadable."
                             "role": "system",
                             "content": (
                                 "You are a strict vehicle-registration OCR reader. Read only characters "
@@ -393,6 +413,8 @@ class GroqPlateOCR:
                             ),
                         },
                         {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{encoded}"},
                             "role": "user",
                             "content": [
                                 {
@@ -409,6 +431,28 @@ class GroqPlateOCR:
                             ],
                         },
                     ],
+                },
+            ],
+            response_format={"type": "json_object"},
+            reasoning_effort="none",
+            reasoning_format="hidden",
+            temperature=0,
+            top_p=0.8,
+            max_completion_tokens=256,
+            stream=False,
+        )
+        content = completion.choices[0].message.content or "{}"
+        parsed: dict[str, Any] = json.loads(
+            re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip())
+        )
+        plate_text = str(parsed.get("plate_text") or parsed.get("raw_text") or "")
+        return OCRReading(
+            provider=self.provider,
+            text=plate_text,
+            raw_text=str(parsed.get("raw_text") or plate_text),
+            confidence=min(1.0, max(0.0, float(parsed.get("confidence") or 0))),
+            processing_ms=(time.perf_counter() - started) * 1000,
+        )
                     response_format={"type": "json_object"},
                     reasoning_effort="none",
                     reasoning_format="hidden",

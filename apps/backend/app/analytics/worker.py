@@ -1022,6 +1022,7 @@ class LiveAnalyticsWorker:
     def _groq_fallback_available(self) -> bool:
         return bool(
             self.config.groq_ocr_enabled
+            and self.config.groq_api_key
             and (self.config.groq_api_keys or self.config.groq_api_key)
             and self.config.groq_model
         )
@@ -1120,12 +1121,14 @@ class LiveAnalyticsWorker:
             self._reason = "Groq OCR queue saturated; persisted fallbacks will retry"
 
     def _run_groq_ocr(self) -> None:
+        assert self.config.groq_api_key
         keys = self.config.groq_api_keys or (
             (self.config.groq_api_key,) if self.config.groq_api_key else ()
         )
         assert keys
         try:
             self._groq_ocr = GroqPlateOCR(
+                api_key=self.config.groq_api_key,
                 api_keys=keys,
                 model=self.config.groq_model,
                 timeout=self.config.groq_timeout_seconds,
