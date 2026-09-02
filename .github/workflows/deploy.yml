@@ -63,6 +63,7 @@ jobs:
               docker compose --env-file .env \
                 -f deployment/docker/compose.p0.3.yml \
                 -f deployment/docker/compose.gpu.yml \
+                -f deployment/docker/compose.https.yml \
                 up -d --build
 
               echo "Waiting for services..."
@@ -72,6 +73,7 @@ jobs:
               docker compose --env-file .env \
                 -f deployment/docker/compose.p0.3.yml \
                 -f deployment/docker/compose.gpu.yml \
+                -f deployment/docker/compose.https.yml \
                 ps
 
               echo "Checking application..."
