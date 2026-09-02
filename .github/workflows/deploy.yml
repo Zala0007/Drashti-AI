@@ -59,7 +59,22 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/drishti_deploy_key
+
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          key = os.environ["DEPLOY_SSH_KEY"].replace("\r", "")
+          key = key.replace("\\n", "\n")
+
+          if not key.endswith("\n"):
+              key += "\n"
+
+          Path.home().joinpath(
+              ".ssh", "drishti_deploy_key"
+          ).write_text(key)
+          PY
+
           chmod 600 ~/.ssh/drishti_deploy_key
           ssh-keygen -y -f ~/.ssh/drishti_deploy_key > /dev/null
 
