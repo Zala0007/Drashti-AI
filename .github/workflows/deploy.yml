@@ -6,14 +6,35 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: drishti-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
   ci:
-    name: CI - Build Docker Images
+    name: CI - Validate and Build
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Validate backend Python
+        run: |
+          python3 -m compileall -q apps/backend
+
+      - name: Validate Docker Compose
+        run: |
+          docker compose \
+            -f deployment/docker/compose.p0.3.yml \
+            -f deployment/docker/compose.gpu.yml \
+            -f deployment/docker/compose.https.yml \
+            config -q
 
       - name: Build backend image
         run: |
@@ -36,35 +57,19 @@ jobs:
       - name: Configure SSH
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
           mkdir -p ~/.ssh
-          python - <<'PY'
-          import os
-          from pathlib import Path
-
-          key = os.environ["DEPLOY_SSH_KEY"].replace("\r", "")
-          key = key.replace("\\n", "\n")
-          if not key.endswith("\n"):
-              key += "\n"
-          Path.home().joinpath(".ssh", "drishti_deploy_key").write_text(key)
-          PY
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/drishti_deploy_key
           chmod 600 ~/.ssh/drishti_deploy_key
           ssh-keygen -y -f ~/.ssh/drishti_deploy_key > /dev/null
-          touch ~/.ssh/known_hosts
 
       - name: Deploy Drishti AI
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
         run: |
-          DEPLOY_HOST_CLEAN="$(printf '%s' "$DEPLOY_HOST" | tr -d '\r\n' | sed -e 's/\\r//g' -e 's/\\n//g')"
-          DEPLOY_USER_CLEAN="$(printf '%s' "$DEPLOY_USER" | tr -d '\r\n' | sed -e 's/\\r//g' -e 's/\\n//g')"
-
-          if [ -z "$DEPLOY_HOST_CLEAN" ] || [ -z "$DEPLOY_USER_CLEAN" ]; then
-            echo "DEPLOY_HOST or DEPLOY_USER is empty after normalization."
-            exit 1
-          fi
+          DEPLOY_HOST_CLEAN="$(printf '%s' "$DEPLOY_HOST" | tr -d '\r\n')"
+          DEPLOY_USER_CLEAN="$(printf '%s' "$DEPLOY_USER" | tr -d '\r\n')"
 
           ssh \
             -i ~/.ssh/drishti_deploy_key \
@@ -72,33 +77,91 @@ jobs:
             -o StrictHostKeyChecking=accept-new \
             "$DEPLOY_USER_CLEAN@$DEPLOY_HOST_CLEAN" \
             'bash -se' <<'REMOTE'
-              set -e
+              set -Eeuo pipefail
 
               cd ~/Drashti-AI
 
-              echo "Pulling latest code..."
-              git pull --ff-only origin main
+              echo "=== Synchronizing repository ==="
+              git fetch origin main
+              git reset --hard origin/main
+              git lfs pull
 
-              echo "Building and starting services..."
+              echo "=== Validating source ==="
+              python3 -m compileall -q apps/backend
+
+              echo "=== Validating Compose ==="
               docker compose --env-file .env \
                 -f deployment/docker/compose.p0.3.yml \
                 -f deployment/docker/compose.gpu.yml \
                 -f deployment/docker/compose.https.yml \
-                up -d --build
+                config -q
 
-              echo "Waiting for services..."
-              sleep 15
+              echo "=== Building and starting services ==="
+              docker compose --env-file .env \
+                -f deployment/docker/compose.p0.3.yml \
+                -f deployment/docker/compose.gpu.yml \
+                -f deployment/docker/compose.https.yml \
+                up -d --build --remove-orphans
 
-              echo "Checking service health..."
+              echo "=== Waiting for backend ==="
+              for i in $(seq 1 30); do
+                if docker compose --env-file .env \
+                  -f deployment/docker/compose.p0.3.yml \
+                  -f deployment/docker/compose.gpu.yml \
+                  -f deployment/docker/compose.https.yml \
+                  ps --status running backend | grep -q backend; then
+                  echo "Backend container is running."
+                  break
+                fi
+
+                if [ "$i" -eq 30 ]; then
+                  echo "Backend failed to start."
+                  docker compose --env-file .env \
+                    -f deployment/docker/compose.p0.3.yml \
+                    -f deployment/docker/compose.gpu.yml \
+                    -f deployment/docker/compose.https.yml \
+                    ps
+                  docker compose --env-file .env \
+                    -f deployment/docker/compose.p0.3.yml \
+                    -f deployment/docker/compose.gpu.yml \
+                    -f deployment/docker/compose.https.yml \
+                    logs --tail=100 backend
+                  exit 1
+                fi
+
+                sleep 2
+              done
+
+              echo "=== Checking backend health ==="
+              for i in $(seq 1 30); do
+                if curl --fail --silent http://127.0.0.1:8000/health/ready > /dev/null; then
+                  echo "Backend health check passed."
+                  break
+                fi
+
+                if [ "$i" -eq 30 ]; then
+                  echo "Backend health check failed."
+                  docker compose --env-file .env \
+                    -f deployment/docker/compose.p0.3.yml \
+                    -f deployment/docker/compose.gpu.yml \
+                    -f deployment/docker/compose.https.yml \
+                    logs --tail=100 backend
+                  exit 1
+                fi
+
+                sleep 2
+              done
+
+              echo "=== Checking all services ==="
               docker compose --env-file .env \
                 -f deployment/docker/compose.p0.3.yml \
                 -f deployment/docker/compose.gpu.yml \
                 -f deployment/docker/compose.https.yml \
                 ps
 
-              echo "Checking application..."
+              echo "=== Checking application ==="
               curl --fail --silent \
-                http://127.0.0.1:80/api/v1/health > /dev/null
+                https://drashti-ai.devs.surf/api/v1/health > /dev/null
 
-              echo "Deployment successful."
+              echo "=== Deployment successful ==="
           REMOTE
