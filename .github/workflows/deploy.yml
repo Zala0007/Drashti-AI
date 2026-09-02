@@ -39,7 +39,17 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
           mkdir -p ~/.ssh
-          printf '%b\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/drishti_deploy_key
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          key = os.environ["DEPLOY_SSH_KEY"].replace("\r", "")
+          if "\\n" in key and "\n" not in key:
+              key = key.replace("\\n", "\n")
+          if not key.endswith("\n"):
+              key += "\n"
+          Path.home().joinpath(".ssh", "drishti_deploy_key").write_text(key)
+          PY
           chmod 600 ~/.ssh/drishti_deploy_key
           ssh-keygen -y -f ~/.ssh/drishti_deploy_key > /dev/null
           touch ~/.ssh/known_hosts
@@ -49,11 +59,14 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
         run: |
+          DEPLOY_HOST_CLEAN="$(printf '%s' "$DEPLOY_HOST" | tr -d '\r\n')"
+          DEPLOY_USER_CLEAN="$(printf '%s' "$DEPLOY_USER" | tr -d '\r\n')"
+
           ssh \
             -i ~/.ssh/drishti_deploy_key \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=accept-new \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "$DEPLOY_USER_CLEAN@$DEPLOY_HOST_CLEAN" \
             'bash -se' <<'REMOTE'
               set -e
 
