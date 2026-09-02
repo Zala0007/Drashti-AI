@@ -39,8 +39,9 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/drishti_deploy_key
+          printf '%s' "$DEPLOY_SSH_KEY" | tr -d '\r' | sed 's/\\n/\n/g' > ~/.ssh/drishti_deploy_key
           chmod 600 ~/.ssh/drishti_deploy_key
+          ssh-keygen -y -f ~/.ssh/drishti_deploy_key > /dev/null
           touch ~/.ssh/known_hosts
 
       - name: Deploy Drishti AI
@@ -50,6 +51,7 @@ jobs:
         run: |
           ssh \
             -i ~/.ssh/drishti_deploy_key \
+            -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=accept-new \
             "$DEPLOY_USER@$DEPLOY_HOST" \
             'bash -se' <<'REMOTE'
