@@ -37,6 +37,9 @@ class AnalyticsConfig:
     evidence_database: str = "./AI-Features/crops.db"
     confidence: float = 0.4
     plate_confidence: float = 0.35
+    sahi_slice_height: int = 256
+    sahi_slice_width: int = 256
+    sahi_overlap_ratio: float = 0.2
     evidence_interval_seconds: float = 2.0
     ocr_enabled: bool = True
     ocr_timeout_seconds: float = 8.0
@@ -198,76 +201,147 @@ class _UltralyticsDetector:
     def __init__(self, config: AnalyticsConfig) -> None:
         try:
             import torch
-            from ultralytics import YOLO
+            from sahi import AutoDetectionModel
+            from sahi.predict import get_sliced_prediction
         except ImportError as exc:
-            raise RuntimeError("Ultralytics analytics dependencies are not installed") from exc
+            raise RuntimeError(
+                "Ultralytics/SAHI analytics dependencies are not installed"
+            ) from exc
+
         general_path = Path(config.general_model_path).expanduser().resolve()
         plate_path = Path(config.plate_model_path).expanduser().resolve()
+
         if not general_path.is_file() or not plate_path.is_file():
             raise RuntimeError("Configured analytics model files are unavailable")
-        self._general = YOLO(str(general_path))
-        self._plate = YOLO(str(plate_path))
+
         self._confidence = config.confidence
         self._plate_confidence = config.plate_confidence
+
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        self._device_argument: int | str = 0 if self.device.startswith("cuda") else "cpu"
-        self.model_name = f"{general_path.name} + {plate_path.name}"
+
+        self._general_sahi = AutoDetectionModel.from_pretrained(
+            model_type="ultralytics",
+            model_path=str(general_path),
+            confidence_threshold=self._confidence,
+            device=self.device,
+        )
+
+        self._plate_sahi = AutoDetectionModel.from_pretrained(
+            model_type="ultralytics",
+            model_path=str(plate_path),
+            confidence_threshold=self._plate_confidence,
+            device=self.device,
+        )
+
+        self._sahi_slice_height = config.sahi_slice_height
+        self._sahi_slice_width = config.sahi_slice_width
+        self._sahi_overlap_ratio = config.sahi_overlap_ratio
+
+        self.model_name = (
+            f"SAHI({general_path.name}) + SAHI({plate_path.name})"
+        )
+
+        self._get_sliced_prediction = get_sliced_prediction
 
     @staticmethod
-    def _detections(result: Any, *, kind: str) -> list[AnalyticsDetection]:
-        boxes = result.boxes
-        if boxes is None or not len(boxes):
-            return []
-        coordinates = boxes.xyxy.cpu().tolist()
-        scores = boxes.conf.cpu().tolist()
-        classes = boxes.cls.int().cpu().tolist()
-        names = result.names
+    def _sahi_detections(
+        prediction_result: Any,
+        *,
+        kind: str,
+    ) -> list[AnalyticsDetection]:
         detections: list[AnalyticsDetection] = []
-        for box, score, class_id in zip(coordinates, scores, classes, strict=True):
-            name = "license_plate" if kind == "plate" else str(names[class_id])
+
+        for pred in prediction_result.object_prediction_list:
+            bbox = pred.bbox
+            category_id = int(pred.category.id)
+            confidence = float(pred.score.value)
+
             detections.append(
                 AnalyticsDetection(
                     kind=kind,
-                    class_id=int(class_id),
-                    class_name=name,
-                    confidence=round(float(score), 4),
-                    x1=float(box[0]),
-                    y1=float(box[1]),
-                    x2=float(box[2]),
-                    y2=float(box[3]),
+                    class_id=category_id,
+                    class_name=(
+                        "license_plate"
+                        if kind == "plate"
+                        else str(pred.category.name)
+                    ),
+                    confidence=round(confidence, 4),
+                    x1=float(bbox.minx),
+                    y1=float(bbox.miny),
+                    x2=float(bbox.maxx),
+                    y2=float(bbox.maxy),
                 )
             )
+
         return detections
+
+    def _predict_sahi(
+        self,
+        image: Image.Image,
+        model: Any,
+    ) -> Any:
+        return self._get_sliced_prediction(
+            image,
+            model,
+            slice_height=self._sahi_slice_height,
+            slice_width=self._sahi_slice_width,
+            overlap_height_ratio=self._sahi_overlap_ratio,
+            overlap_width_ratio=self._sahi_overlap_ratio,
+            perform_standard_pred=False,
+            postprocess_type="NMS",
+            postprocess_match_metric="IOU",
+            postprocess_match_threshold=0.5,
+            verbose=0,
+            progress_bar=False,
+            batch_size=8,
+        )
 
     def predict(
         self, packets: tuple[FramePacket, ...]
     ) -> list[tuple[Image.Image, list[AnalyticsDetection]]]:
         images = [
-            Image.frombytes("RGB", (packet.width, packet.height), packet.payload)
+            Image.frombytes(
+                "RGB",
+                (packet.width, packet.height),
+                packet.payload,
+            )
             for packet in packets
         ]
-        general = self._general.predict(
-            source=images,
-            conf=self._confidence,
-            device=self._device_argument,
-            verbose=False,
-        )
-        plates = self._plate.predict(
-            source=images,
-            conf=self._plate_confidence,
-            device=self._device_argument,
-            verbose=False,
-        )
-        return [
-            (
+
+        results: list[tuple[Image.Image, list[AnalyticsDetection]]] = []
+
+        for image in images:
+            vehicle_prediction = self._predict_sahi(
                 image,
-                [
-                    *self._detections(general_result, kind="object"),
-                    *self._detections(plate_result, kind="plate"),
-                ],
+                self._general_sahi,
             )
-            for image, general_result, plate_result in zip(images, general, plates, strict=True)
-        ]
+
+            plate_prediction = self._predict_sahi(
+                image,
+                self._plate_sahi,
+            )
+
+            vehicle_detections = self._sahi_detections(
+                vehicle_prediction,
+                kind="object",
+            )
+
+            plate_detections = self._sahi_detections(
+                plate_prediction,
+                kind="plate",
+            )
+
+            results.append(
+                (
+                    image,
+                    [
+                        *vehicle_detections,
+                        *plate_detections,
+                    ],
+                )
+            )
+
+        return results
 
 
 class _EvidenceWriter:

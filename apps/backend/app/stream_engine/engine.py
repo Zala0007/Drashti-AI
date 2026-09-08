@@ -510,8 +510,10 @@ class StreamEngine:
                             "component": "decoder",
                             "camera_id": session.camera.id,
                             "stream_id": session.id,
-                            "error_type": type(exc).__name__,
-                            "timestamp": datetime.now(UTC).isoformat(),
+			    "error_type": type(exc).__name__,
+			    "decoder_backend": decoder.backend if decoder else None,
+			    "decoder_stderr": getattr(decoder, "_stderr_tail", [])[-8:] if decoder else [],
+			    "timestamp": datetime.now(UTC).isoformat(),
                         },
                         separators=(",", ":"),
                     )

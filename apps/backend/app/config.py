@@ -124,6 +124,9 @@ class Settings:
     live_analytics_plate_model: str = "./AI-Features/models/license_plate_detector.pt"
     live_analytics_confidence: float = 0.4
     live_analytics_plate_confidence: float = 0.35
+    live_analytics_sahi_slice_height: int = 256
+    live_analytics_sahi_slice_width: int = 256
+    live_analytics_sahi_overlap_ratio: float = 0.2
     live_analytics_evidence_interval_seconds: float = 2.0
     live_analytics_ocr_enabled: bool = True
     live_analytics_ocr_timeout_seconds: float = 8.0
@@ -309,6 +312,19 @@ class Settings:
                 minimum=0.05,
                 maximum=1.0,
                 name="LIVE_ANALYTICS_PLATE_CONFIDENCE",
+            ),
+            live_analytics_sahi_slice_height=int(
+                os.getenv("LIVE_ANALYTICS_SAHI_SLICE_HEIGHT", "256")
+            ),
+            live_analytics_sahi_slice_width=int(
+                os.getenv("LIVE_ANALYTICS_SAHI_SLICE_WIDTH", "256")
+            ),
+            live_analytics_sahi_overlap_ratio=_as_bounded_float(
+                os.getenv("LIVE_ANALYTICS_SAHI_OVERLAP_RATIO"),
+                default=0.2,
+                minimum=0.0,
+                maximum=0.8,
+                name="LIVE_ANALYTICS_SAHI_OVERLAP_RATIO",
             ),
             live_analytics_evidence_interval_seconds=_as_bounded_float(
                 os.getenv("LIVE_ANALYTICS_EVIDENCE_INTERVAL_SECONDS"),

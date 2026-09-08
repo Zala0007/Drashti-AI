@@ -98,7 +98,7 @@ const session = {
   stopped_at: null,
   last_error_code: null,
   last_error_message: null,
-  preview_url: "/api/v1/streams/camera-1/preview.jpg",
+  preview_url: "/api/v1/streams/camera-1/preview.mjpg",
 };
 
 describe("P04 live operations page", () => {
@@ -151,7 +151,7 @@ describe("P04 live operations page", () => {
     expect(screen.getByText("FFmpeg ready")).toBeInTheDocument();
     expect(screen.getByText("P05 consumer interface ready")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Continuous live feed from Ashram Road ANPR" }))
-      .toHaveAttribute("src", expect.stringContaining("/preview.jpg"));
+      .toHaveAttribute("src", expect.stringContaining("/preview.mjpg"));
 
     const tile = screen.getByText("Ashram Road ANPR").closest("article");
     expect(tile).not.toBeNull();

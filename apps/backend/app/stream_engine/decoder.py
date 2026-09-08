@@ -136,7 +136,7 @@ class FFmpegRawDecoder:
             arguments.extend(
                 [
                     "-fflags",
-                    "+genpts+discardcorrupt+nobuffer",
+                    "+genpts+discardcorrupt",
                 ]
             )
         elif self.source_kind in {"hls", "mjpeg"}:
@@ -144,12 +144,22 @@ class FFmpegRawDecoder:
             arguments.extend(
                 [
                     "-fflags",
-                    "+genpts+discardcorrupt+nobuffer",
+                    "+genpts+discardcorrupt",
                 ]
             )
         elif self.source_kind == "recorded_file":
             whitelist = "file,pipe"
-            arguments.extend(["-re", "-stream_loop", "-1"])
+            arguments.extend(
+                [
+                    "-re",
+                    "-stream_loop",
+                    "-1",
+                    "-hwaccel",
+                    "cuda",
+                    "-hwaccel_output_format",
+                    "cuda",
+                ]
+            )
         else:
             raise DecoderError("The selected adapter cannot provide decoded frames")
         if self.source_kind in {"rtsp", "onvif", "hls", "mjpeg"}:
@@ -169,12 +179,24 @@ class FFmpegRawDecoder:
             # Input-side CUDA acceleration; decoded frames are downloaded for
             # the existing CPU scale and RGB output contract.
             arguments.extend(["-hwaccel", "cuda"])
-        video_filter = (
-            f"fps={self.config.decode_fps:g},"
-            f"scale={self.config.width}:{self.config.height}:force_original_aspect_ratio=decrease,"
-            f"pad={self.config.width}:{self.config.height}:(ow-iw)/2:(oh-ih)/2:black,"
-            "showinfo"
-        )
+        if self.source_kind == "recorded_file" and self.hardware_decode:
+            # NVDEC produces CUDA frames; download them before the existing
+            # CPU scale/pad/RGB output contract.
+            video_filter = (
+                "hwdownload,"
+                "format=nv12,"
+                f"fps={self.config.decode_fps:g},"
+                f"scale={self.config.width}:{self.config.height}:force_original_aspect_ratio=decrease,"
+                f"pad={self.config.width}:{self.config.height}:(ow-iw)/2:(oh-ih)/2:black,"
+                "showinfo"
+            )
+        else:
+            video_filter = (
+                f"fps={self.config.decode_fps:g},"
+                f"scale={self.config.width}:{self.config.height}:force_original_aspect_ratio=decrease,"
+                f"pad={self.config.width}:{self.config.height}:(ow-iw)/2:(oh-ih)/2:black,"
+                "showinfo"
+            )
         arguments.extend(
             [
                 "-f",

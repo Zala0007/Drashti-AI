@@ -636,7 +636,7 @@ export const streamApi = {
   },
 
   previewUrl(cameraId: string, generation: string): string {
-    return `${API_BASE_URL}/streams/${encodeURIComponent(cameraId)}/preview.jpg?v=${encodeURIComponent(generation)}`;
+    return `${API_BASE_URL}/streams/${encodeURIComponent(cameraId)}/preview.mjpg?v=${encodeURIComponent(generation)}`;
   },
 };
 
