@@ -74,7 +74,9 @@ services:
       GROQ_API_KEY_1: ${GROQ_API_KEY_1:-}
       GROQ_API_KEY_2: ${GROQ_API_KEY_2:-}
       GROQ_API_KEY_3: ${GROQ_API_KEY_3:-}
-      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      # CI/CD runs this backend on GCP: use the VM's attached service account.
+      # Do not inject a local JSON path (or an empty ADC credential-file variable).
+      GOOGLE_OCR_AUTH_MODE: ${GOOGLE_OCR_AUTH_MODE:-metadata}
       VISUAL_INTELLIGENCE_ENABLED: ${VISUAL_INTELLIGENCE_ENABLED:-true}
       VISUAL_INTELLIGENCE_AUTO_ANALYZE: ${VISUAL_INTELLIGENCE_AUTO_ANALYZE:-true}
     command:
@@ -115,6 +117,8 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
         VITE_MAP_TILE_URL: "${VITE_MAP_TILE_URL:-}"
+        VITE_MAP_LIGHT_TILE_URL: "${VITE_MAP_LIGHT_TILE_URL:-}"
+        VITE_MAP_DARK_TILE_URL: "${VITE_MAP_DARK_TILE_URL:-}"
         VITE_MAP_ATTRIBUTION: "${VITE_MAP_ATTRIBUTION:-}"
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-5173}:8080"

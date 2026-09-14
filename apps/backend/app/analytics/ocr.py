@@ -253,13 +253,24 @@ class HybridOCRReconciler:
 class GooglePlateOCR:
     provider = "google"
 
-    def __init__(self, timeout: float) -> None:
+    def __init__(self, timeout: float, *, auth_mode: str = "adc") -> None:
         try:
             from google.cloud import vision
         except ImportError as exc:
             raise RuntimeError("Google Cloud Vision dependencies are not installed") from exc
         self._vision = vision
-        self._client = vision.ImageAnnotatorClient()
+        if auth_mode == "metadata":
+            from google.auth import compute_engine
+
+            # Explicit attached identity: stale local JSON/ADC files cannot override it.
+            credentials = compute_engine.Credentials(
+                scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+            self._client = vision.ImageAnnotatorClient(credentials=credentials)
+        elif auth_mode == "adc":
+            self._client = vision.ImageAnnotatorClient()
+        else:
+            raise ValueError("GOOGLE_OCR_AUTH_MODE must be adc or metadata")
         self._timeout = timeout
 
     def recognize_batch(self, crops: list[bytes]) -> list[OCRReading]:
@@ -276,7 +287,11 @@ class GooglePlateOCR:
             )
             for crop in crops
         ]
-        response = self._client.batch_annotate_images(requests=requests, timeout=self._timeout)
+        # The durable worker owns retries. SDK retries would exceed this request's
+        # configured timeout and delay the Groq fallback during provider outages.
+        response = self._client.batch_annotate_images(
+            requests=requests, timeout=self._timeout, retry=None
+        )
         elapsed = (time.perf_counter() - started) * 1000 / len(crops)
         readings: list[OCRReading] = []
         for item in response.responses:

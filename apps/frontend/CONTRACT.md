@@ -60,7 +60,8 @@ The map expects a GeoJSON `FeatureCollection` with point coordinates in `[longit
 ## Runtime assumptions
 
 - Vite proxies `/api` to `VITE_DEV_API_TARGET` (default `http://127.0.0.1:8000`) during local development.
-- Deployments can point `VITE_MAP_TILE_URL` at a government-hosted or offline raster tile service. OpenStreetMap is only the development default.
+- All map surfaces share one basemap component. Deployments can point `VITE_MAP_TILE_URL` at an approved raster tile service and optionally set `VITE_MAP_LIGHT_TILE_URL` / `VITE_MAP_DARK_TILE_URL` for native theme variants, with the provider's required attribution in `VITE_MAP_ATTRIBUTION`.
+- The default uses the canonical OpenStreetMap HTTPS endpoint, visible linked attribution, normal browser caching, and `strict-origin-when-cross-origin` on tile images and the frontend response. Do not strip the Referer at the hosting layer. Failed tiles show a non-blocking retry notice while camera markers remain usable. CARTO endpoints require a project basemap API key; see https://carto.com/basemaps/apikey/.
 - Authentication/RBAC is intentionally not fabricated in P0.1. The UI is ready to use same-origin sessions; authorization must remain server-enforced when the identity module is introduced.
 - The Command Centre performs explicit refreshes and does not claim real-time alert or ANPR updates because no event/WebSocket contract exists yet.
 

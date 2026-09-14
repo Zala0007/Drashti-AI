@@ -94,12 +94,12 @@ describe("Drishti application runtime", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Unified CCTV Intelligence Platform" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Every camera.*One clear picture/ })).toBeInTheDocument();
     const totalKpi = screen.getByText("Registered cameras").closest("article");
     expect(totalKpi).not.toBeNull();
     expect(await within(totalKpi!).findByText("0")).toBeInTheDocument();
     expect(await screen.findByText("No mapped cameras")).toBeInTheDocument();
-    expect(screen.getByText("No offline or degraded assets")).toBeInTheDocument();
+    expect(screen.getByText("Your network is in good shape")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Stream Federation" }));
     expect(await screen.findByRole("heading", { name: "Stream Federation" })).toBeInTheDocument();
@@ -142,12 +142,12 @@ describe("Drishti application runtime", () => {
     render(<App />);
 
     const totalKpi = screen.getByText("Registered cameras").closest("article");
-    const onlineKpi = screen.getByText("Online cameras", { selector: ".command-kpi small" }).closest("article");
-    const attentionKpi = screen.getByText("Health attention").closest("article");
+    const onlineKpi = screen.getByText("Online cameras", { selector: ".ops-metric small" }).closest("article");
+    const attentionKpi = screen.getByText("Need attention").closest("article");
     expect(await within(totalKpi!).findByText("73")).toBeInTheDocument();
     expect(within(attentionKpi!).getByText("5")).toBeInTheDocument();
     expect(within(onlineKpi!).getByText("68")).toBeInTheDocument();
     expect(screen.queryByText(/Vehicles detected today/i)).not.toBeInTheDocument();
-    expect(screen.getByText("Presentation scenarios are explicitly disclosed.")).toBeInTheDocument();
+    expect(screen.getByText(/Presentation scenarios are labeled/)).toBeInTheDocument();
   });
 });

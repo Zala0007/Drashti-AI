@@ -1,3 +1,4 @@
+import { MapBasemap } from "../components/MapBasemap";
 import type { LatLngBoundsExpression, LatLngExpression } from "leaflet";
 import {
   AlertTriangle,
@@ -15,14 +16,12 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Circle, CircleMarker, MapContainer, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { Circle, CircleMarker, MapContainer, Tooltip, useMap } from "react-leaflet";
 import { advancedApi, ApiError } from "../lib/api";
 import { formatTimestamp, titleCase } from "../lib/format";
 import type { CoverageAnalysis, CoverageWhatIf } from "../types/advanced";
 
 const GUJARAT_CENTER: LatLngExpression = [22.72, 71.64];
-const tileUrl = import.meta.env.VITE_MAP_TILE_URL || "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-const tileAttribution = import.meta.env.VITE_MAP_ATTRIBUTION || "&copy; OpenStreetMap contributors";
 
 export function CoverageIntelligencePage() {
   const [analysis, setAnalysis] = useState<CoverageAnalysis | null>(null);
@@ -85,7 +84,7 @@ function CoverageKpi({ icon: Icon, label, value, tone }: { icon: typeof Camera; 
 
 function CoverageMap({ analysis, simulation }: { analysis: CoverageAnalysis | null; simulation: CoverageWhatIf | null }) {
   const points = useMemo(() => analysis ? [...analysis.gaps.map((item) => [item.latitude, item.longitude] as [number, number]), ...analysis.deployment_candidates.map((item) => [item.latitude, item.longitude] as [number, number]), ...analysis.critical_nodes.map((item) => [item.camera.latitude, item.camera.longitude] as [number, number])] : [], [analysis]);
-  return <div className="coverage-map"><MapContainer center={GUJARAT_CENTER} zoom={7} minZoom={5} maxZoom={18}><TileLayer attribution={tileAttribution} url={tileUrl} />{analysis?.gaps.map((item) => <Circle key={item.id} center={[item.latitude, item.longitude]} radius={Math.min(item.radius_m, 30000)} pathOptions={{ color: item.gap_type === "temporary" ? "#ed6a72" : "#f1b858", fillColor: item.gap_type === "temporary" ? "#b93645" : "#9b6721", fillOpacity: .14, weight: 2, dashArray: item.gap_type === "permanent" ? "7 7" : undefined }}><Tooltip><strong>{titleCase(item.gap_type)} coverage gap</strong><br/>{item.explanation}</Tooltip></Circle>)}{analysis?.deployment_candidates.map((item) => <CircleMarker key={item.id} center={[item.latitude, item.longitude]} radius={7} pathOptions={{ color: "#42e0d7", fillColor: "#42e0d7", fillOpacity: .7, weight: 2 }}><Tooltip><strong>{item.area_label}</strong><br/>{item.assumption}</Tooltip></CircleMarker>)}{analysis?.critical_nodes.map((item) => <CircleMarker key={item.camera.id} center={[item.camera.latitude, item.camera.longitude]} radius={9} pathOptions={{ color: "#eaf5f7", fillColor: "#163d50", fillOpacity: .8, weight: 2 }}><Tooltip><strong>{item.camera.camera_code}</strong><br/>{item.reason}</Tooltip></CircleMarker>)}{simulation ? <Circle center={[simulation.camera.latitude, simulation.camera.longitude]} radius={simulation.estimated_coverage_lost_radius_m} pathOptions={{ color: "#ff445f", fillColor: "#ff445f", fillOpacity: .13, weight: 3, dashArray: "4 6" }} /> : null}{points.length ? <FitCoverage points={points} /> : null}</MapContainer></div>;
+  return <div className="coverage-map"><MapContainer center={GUJARAT_CENTER} zoom={7} minZoom={5} maxZoom={18}><MapBasemap />{analysis?.gaps.map((item) => <Circle key={item.id} center={[item.latitude, item.longitude]} radius={Math.min(item.radius_m, 30000)} pathOptions={{ color: item.gap_type === "temporary" ? "#ed6a72" : "#f1b858", fillColor: item.gap_type === "temporary" ? "#b93645" : "#9b6721", fillOpacity: .14, weight: 2, dashArray: item.gap_type === "permanent" ? "7 7" : undefined }}><Tooltip><strong>{titleCase(item.gap_type)} coverage gap</strong><br/>{item.explanation}</Tooltip></Circle>)}{analysis?.deployment_candidates.map((item) => <CircleMarker key={item.id} center={[item.latitude, item.longitude]} radius={7} pathOptions={{ color: "#42e0d7", fillColor: "#42e0d7", fillOpacity: .7, weight: 2 }}><Tooltip><strong>{item.area_label}</strong><br/>{item.assumption}</Tooltip></CircleMarker>)}{analysis?.critical_nodes.map((item) => <CircleMarker key={item.camera.id} center={[item.camera.latitude, item.camera.longitude]} radius={9} pathOptions={{ color: "#eaf5f7", fillColor: "#163d50", fillOpacity: .8, weight: 2 }}><Tooltip><strong>{item.camera.camera_code}</strong><br/>{item.reason}</Tooltip></CircleMarker>)}{simulation ? <Circle center={[simulation.camera.latitude, simulation.camera.longitude]} radius={simulation.estimated_coverage_lost_radius_m} pathOptions={{ color: "#ff445f", fillColor: "#ff445f", fillOpacity: .13, weight: 3, dashArray: "4 6" }} /> : null}{points.length ? <FitCoverage points={points} /> : null}</MapContainer></div>;
 }
 
 function FitCoverage({ points }: { points: Array<[number, number]> }) {

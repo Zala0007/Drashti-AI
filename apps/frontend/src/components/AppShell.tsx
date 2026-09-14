@@ -5,7 +5,6 @@ import {
   Camera,
   ChevronLeft,
   ChevronRight,
-  CircleUserRound,
   Cctv,
   HeartPulse,
   Map,
@@ -20,7 +19,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useLayoutEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import type { FederationStatistics } from "../types/federation";
 import type { CameraStatistics } from "../types/registry";
 
@@ -46,7 +45,7 @@ const pageMeta: Record<AppPage, { label: string; eyebrow: string }> = {
   health: { label: "Camera Health", eyebrow: "Operational resilience intelligence" },
   coverage: { label: "Coverage Intelligence", eyebrow: "Statewide surveillance planning" },
   federation: { label: "Stream Federation", eyebrow: "Secure integration control plane" },
-  live: { label: "Live Operations", eyebrow: "P04 video processing engine" },
+  live: { label: "Live Operations", eyebrow: "Live feeds and edge processing" },
   gis: { label: "GIS Operations", eyebrow: "Statewide geospatial operations" },
   registry: { label: "Camera Registry", eyebrow: "Federated asset control" },
 };
@@ -81,7 +80,6 @@ const navSections = [
   },
 ] as const;
 
-const activeModules = ["Video analytics", "Visual search", "ANPR", "ReID", "Cases", "Health", "Coverage"];
 type Theme = "dark" | "light";
 
 function initialTheme(): Theme {
@@ -91,7 +89,7 @@ function initialTheme(): Theme {
   } catch {
     // Storage can be unavailable in privacy-restricted browser contexts.
   }
-  return "light";
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 export function AppShell({
@@ -110,9 +108,10 @@ export function AppShell({
   useLayoutEffect(() => {
     document.documentElement.classList.add("theme-changing");
     document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
     document.querySelector('meta[name="theme-color"]')?.setAttribute(
       "content",
-      theme === "dark" ? "#04101c" : "#f4f8fa",
+      theme === "dark" ? "#101919" : "#f5f6f3",
     );
     try {
       window.localStorage.setItem("drishti-theme", theme);
@@ -125,6 +124,20 @@ export function AppShell({
     return () => window.clearTimeout(timer);
   }, [theme]);
 
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
+    document.title = `${pageMeta[activePage].label} · Drashti AI`;
+    setMobileNavOpen(false);
+  }, [activePage]);
+
   const navigate = (page: AppPage) => {
     onNavigate(page);
     setMobileNavOpen(false);
@@ -132,8 +145,9 @@ export function AppShell({
 
   return (
     <div className={`app-shell${collapsed ? " app-shell--collapsed" : ""}`}>
+      <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); document.getElementById("main-content")?.focus(); }}>Skip to workspace</a>
       <header className="mobile-header">
-        <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Toggle navigation">
+        <button type="button" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Toggle navigation" aria-expanded={mobileNavOpen} aria-controls="primary-navigation">
           {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
         <Brand compact />
@@ -150,7 +164,7 @@ export function AppShell({
         >
           {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
         </button>
-        <nav aria-label="Primary navigation">
+        <nav id="primary-navigation" aria-label="Primary navigation">
           {navSections.map((section) => (
             <div className="sidebar__nav-section" key={section.label}>
               <span className="sidebar__section">{section.label}</span>
@@ -172,15 +186,15 @@ export function AppShell({
           ))}
         </nav>
 
-        <section className="module-readiness" aria-label="Operational intelligence modules">
-          <div><BrainCircuit aria-hidden="true" size={16} /><span><strong>Processing services</strong><small>Module availability</small></span></div>
-          <p>{activeModules.join(" · ")}</p>
+        <section className="module-readiness" aria-label="Connected intelligence workflow">
+          <div><Network aria-hidden="true" size={17} /><span><strong>One connected workflow</strong><small>From camera to case</small></span></div>
+          <p>Connect. Detect. Investigate.</p>
         </section>
 
         <div className="sidebar__footer">
           <div className="security-tile">
             <ShieldCheck aria-hidden="true" size={18} />
-            <span><strong>Controlled workspace</strong><small>Secret-safe federation</small></span>
+            <span><strong>Gujarat operations</strong><small>Federated intelligence</small></span>
           </div>
           <div className="api-state">
             <i className={apiConnected === null ? "api-state__dot api-state__dot--pending" : apiConnected ? "api-state__dot" : "api-state__dot api-state__dot--down"} />
@@ -197,24 +211,17 @@ export function AppShell({
             <span className="command-topbar__eyebrow">{pageMeta[activePage].eyebrow}</span>
             <div>
               <strong>{pageMeta[activePage].label}</strong>
-              <span className="command-topbar__network"><ShieldCheck aria-hidden="true" size={12} /> Federated camera operations platform</span>
             </div>
           </div>
           <div className="command-topbar__posture" aria-label="Live platform status">
-            <TopMetric icon={Network} label="Registry posture" value={apiConnected ? "Operational" : apiConnected === false ? "Unavailable" : "Connecting"} tone={apiConnected ? "healthy" : apiConnected === false ? "critical" : "pending"} />
+            <TopMetric icon={Network} label="Registry" value={apiConnected ? "Connected" : apiConnected === false ? "Unavailable" : "Connecting"} tone={apiConnected ? "healthy" : apiConnected === false ? "critical" : "pending"} />
             <TopMetric icon={Camera} label="Online cameras" value={statistics ? statistics.online.toLocaleString("en-IN") : "—"} />
             <TopMetric icon={BrainCircuit} label="Reachable probes" value={federationConnected ? (federationStatistics?.reachable ?? 0).toLocaleString("en-IN") : federationConnected === false ? "Pending" : "Connecting"} tone={federationConnected ? "healthy" : federationConnected === false ? "pending" : undefined} />
-            <div className="topbar-pending" title="Disclosed presentation scenario available for alert review">
-              <BellRing aria-hidden="true" size={16} /><span><small>{activePage === "alerts" ? "Live alerts" : "Alert review"}</small><strong>{activePage === "alerts" ? "Review queue" : "Operational"}</strong></span>
-            </div>
           </div>
+          <button className="topbar-alert-link" type="button" title="Open watchlist alerts" aria-label="Open watchlist alerts" onClick={() => navigate("alerts")}><BellRing aria-hidden="true" size={18} /></button>
           <ThemeToggle theme={theme} onToggle={() => setTheme((value) => value === "dark" ? "light" : "dark")} />
-          <div className="operator-context" title="Presentation-safe operator context; production identity is supplied by the trusted gateway">
-            <CircleUserRound aria-hidden="true" size={22} />
-            <span><strong>Command operator</strong><small>Secure workspace</small></span>
-          </div>
         </header>
-        <main className="main-content">{children}</main>
+        <main id="main-content" tabIndex={-1} className="main-content">{children}</main>
       </div>
     </div>
   );
@@ -267,11 +274,8 @@ function TopMetric({
 function Brand({ compact = false, collapsed = false }: { compact?: boolean; collapsed?: boolean }) {
   return (
     <div className={`brand${compact ? " brand--compact" : ""}${collapsed ? " brand--collapsed" : ""}`}>
-      <img
-        className="brand__logo"
-        src="/assets/drishti-ai-logo-transparent.png"
-        alt="Drishti AI"
-      />
+      <span className="brand-symbol" aria-hidden="true"><img src="/assets/drishti-ai-logo-transparent.png" alt="" /></span>
+      <span className="brand-wordmark"><strong>Drashti<span>AI</span></strong><small>INTELLIGENCE IN SIGHT</small></span>
     </div>
   );
 }

@@ -129,6 +129,7 @@ class Settings:
     live_analytics_sahi_overlap_ratio: float = 0.2
     live_analytics_evidence_interval_seconds: float = 2.0
     live_analytics_ocr_enabled: bool = True
+    google_ocr_auth_mode: str = "adc"
     live_analytics_ocr_timeout_seconds: float = 8.0
     live_analytics_ocr_cooldown_seconds: float = 4.0
     live_analytics_ocr_batch_size: int = 8
@@ -334,6 +335,7 @@ class Settings:
                 name="LIVE_ANALYTICS_EVIDENCE_INTERVAL_SECONDS",
             ),
             live_analytics_ocr_enabled=_as_bool(os.getenv("LIVE_ANALYTICS_OCR_ENABLED"), True),
+            google_ocr_auth_mode=os.getenv("GOOGLE_OCR_AUTH_MODE", "adc").strip().lower(),
             live_analytics_ocr_timeout_seconds=_as_bounded_float(
                 os.getenv("LIVE_ANALYTICS_OCR_TIMEOUT_SECONDS"),
                 default=8.0,

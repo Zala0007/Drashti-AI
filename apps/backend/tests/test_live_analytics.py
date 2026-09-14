@@ -23,6 +23,15 @@ class FakeDetector:
     model_name = "test-models"
 
 
+def test_numbered_groq_keys_enable_fallback_without_legacy_single_key() -> None:
+    worker = LiveAnalyticsWorker(
+        SimpleNamespace(),  # type: ignore[arg-type]
+        AnalyticsConfig(groq_api_keys=("test-key",), groq_api_key=None),
+        detector=FakeDetector(),
+    )
+    assert worker._groq_fallback_available is True
+
+
 def test_camera_result_routes_vehicle_and_plate_evidence(tmp_path: Path) -> None:
     database = tmp_path / "evidence.db"
     config = AnalyticsConfig(

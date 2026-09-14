@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import L, { type LatLngExpression } from "leaflet";
-import { MapContainer, Marker, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, Marker, Tooltip, useMap } from "react-leaflet";
 import { Crosshair, Layers3, MapPinned } from "lucide-react";
 import { titleCase } from "../lib/format";
 import { geoFeatureHealth, geoFeatureId } from "../lib/registryView";
@@ -9,6 +9,7 @@ import type { CameraRoutePoint } from "../lib/route";
 import { CameraRouteLayer } from "./CameraRouteLayer";
 import { ErrorState, LoadingState } from "./Feedback";
 import { MarkerClusterLayer } from "./MarkerClusterLayer";
+import { MapBasemap } from "./MapBasemap";
 import { StatusBadge } from "./StatusBadge";
 
 interface CameraMapProps {
@@ -23,8 +24,6 @@ interface CameraMapProps {
 }
 
 const GUJARAT_CENTER: LatLngExpression = [22.72, 71.64];
-const tileUrl = import.meta.env.VITE_MAP_TILE_URL || "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-const tileAttribution = import.meta.env.VITE_MAP_ATTRIBUTION || "&copy; OpenStreetMap contributors";
 
 const healthGlyph: Record<HealthStatus, string> = { online: "✓", offline: "×", degraded: "!", unknown: "?" };
 
@@ -90,7 +89,7 @@ export function CameraMap({
         <span className="map-toolbar__count"><Crosshair aria-hidden="true" size={14} /> {validFeatures.length.toLocaleString("en-IN")} mapped</span>
       </div>
       <MapContainer center={GUJARAT_CENTER} zoom={7} minZoom={5} maxZoom={19} zoomControl attributionControl>
-        <TileLayer attribution={tileAttribution} url={tileUrl} maxZoom={19} />
+        <MapBasemap />
         <MarkerClusterLayer
           chunkedLoading
           showCoverageOnHover={false}

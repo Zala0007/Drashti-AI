@@ -154,6 +154,7 @@ def create_app(
             sahi_overlap_ratio=app_settings.live_analytics_sahi_overlap_ratio,
             evidence_interval_seconds=app_settings.live_analytics_evidence_interval_seconds,
             ocr_enabled=app_settings.live_analytics_ocr_enabled,
+            google_ocr_auth_mode=app_settings.google_ocr_auth_mode,
             ocr_timeout_seconds=app_settings.live_analytics_ocr_timeout_seconds,
             ocr_cooldown_seconds=app_settings.live_analytics_ocr_cooldown_seconds,
             ocr_batch_size=app_settings.live_analytics_ocr_batch_size,

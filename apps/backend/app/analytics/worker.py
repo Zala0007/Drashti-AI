@@ -42,6 +42,7 @@ class AnalyticsConfig:
     sahi_overlap_ratio: float = 0.2
     evidence_interval_seconds: float = 2.0
     ocr_enabled: bool = True
+    google_ocr_auth_mode: str = "adc"
     ocr_timeout_seconds: float = 8.0
     ocr_cooldown_seconds: float = 4.0
     ocr_batch_size: int = 8
@@ -203,6 +204,7 @@ class _UltralyticsDetector:
             import torch
             from sahi import AutoDetectionModel
             from sahi.predict import get_sliced_prediction
+            from ultralytics import YOLO
         except ImportError as exc:
             raise RuntimeError(
                 "Ultralytics/SAHI analytics dependencies are not installed"
@@ -226,19 +228,14 @@ class _UltralyticsDetector:
             device=self.device,
         )
 
-        self._plate_sahi = AutoDetectionModel.from_pretrained(
-            model_type="ultralytics",
-            model_path=str(plate_path),
-            confidence_threshold=self._plate_confidence,
-            device=self.device,
-        )
+        self._plate_model = YOLO(str(plate_path))
 
         self._sahi_slice_height = config.sahi_slice_height
         self._sahi_slice_width = config.sahi_slice_width
         self._sahi_overlap_ratio = config.sahi_overlap_ratio
 
         self.model_name = (
-            f"SAHI({general_path.name}) + SAHI({plate_path.name})"
+            f"SAHI({general_path.name}) + YOLO({plate_path.name})"
         )
 
         self._get_sliced_prediction = get_sliced_prediction
@@ -316,9 +313,13 @@ class _UltralyticsDetector:
                 self._general_sahi,
             )
 
-            plate_prediction = self._predict_sahi(
-                image,
-                self._plate_sahi,
+            # Plate coordinates stay in the original frame, preserving the OCR
+            # crop and vehicle association without SAHI slicing or merging.
+            plate_prediction = self._plate_model.predict(
+                source=image,
+                conf=self._plate_confidence,
+                device=self.device,
+                verbose=False,
             )
 
             vehicle_detections = self._sahi_detections(
@@ -326,10 +327,26 @@ class _UltralyticsDetector:
                 kind="object",
             )
 
-            plate_detections = self._sahi_detections(
-                plate_prediction,
-                kind="plate",
-            )
+            plate_detections: list[AnalyticsDetection] = []
+            for result in plate_prediction:
+                if result.boxes is None:
+                    continue
+                boxes = result.boxes.cpu()
+                for coordinates, class_id, confidence in zip(
+                    boxes.xyxy.tolist(), boxes.cls.tolist(), boxes.conf.tolist(), strict=True
+                ):
+                    plate_detections.append(
+                        AnalyticsDetection(
+                            kind="plate",
+                            class_id=int(class_id),
+                            class_name="license_plate",
+                            confidence=round(float(confidence), 4),
+                            x1=float(coordinates[0]),
+                            y1=float(coordinates[1]),
+                            x2=float(coordinates[2]),
+                            y2=float(coordinates[3]),
+                        )
+                    )
 
             results.append(
                 (
@@ -1096,14 +1113,15 @@ class LiveAnalyticsWorker:
     def _groq_fallback_available(self) -> bool:
         return bool(
             self.config.groq_ocr_enabled
-            and self.config.groq_api_key
             and (self.config.groq_api_keys or self.config.groq_api_key)
             and self.config.groq_model
         )
 
     def _run_ocr(self) -> None:
         try:
-            self._ocr = GooglePlateOCR(self.config.ocr_timeout_seconds)
+            self._ocr = GooglePlateOCR(
+                self.config.ocr_timeout_seconds, auth_mode=self.config.google_ocr_auth_mode
+            )
         except Exception as exc:
             self._reason = f"Google OCR unavailable; Groq fallback remains eligible: {exc}"
             self._ocr = None
@@ -1195,7 +1213,6 @@ class LiveAnalyticsWorker:
             self._reason = "Groq OCR queue saturated; persisted fallbacks will retry"
 
     def _run_groq_ocr(self) -> None:
-        assert self.config.groq_api_key
         keys = self.config.groq_api_keys or (
             (self.config.groq_api_key,) if self.config.groq_api_key else ()
         )
