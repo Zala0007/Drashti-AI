@@ -17,6 +17,7 @@ jobs:
   ci:
     name: CI - Validate and Build
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -28,6 +29,9 @@ jobs:
         run: |
           python3 -m compileall -q apps/backend
 
+      - name: Validate retry behavior
+        run: bash deployment/scripts/test-retry.sh
+
       - name: Validate Docker Compose
         run: |
          POSTGRES_PASSWORD=ci-validation-only FEDERATION_ENCRYPTION_KEY=ci-validation-only docker compose \
@@ -38,13 +42,13 @@ jobs:
 
       - name: Build backend image
         run: |
-          docker build \
+          bash deployment/scripts/retry.sh docker build \
             -f deployment/docker/backend.Dockerfile \
             -t drishti-ai-backend-ci .
 
       - name: Build frontend image
         run: |
-          docker build \
+          bash deployment/scripts/retry.sh docker build \
             -f deployment/docker/frontend.Dockerfile \
             -t drishti-ai-frontend-ci .
 
@@ -52,6 +56,7 @@ jobs:
     name: CD - Deploy to GCP VM
     needs: ci
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Configure SSH
@@ -89,6 +94,10 @@ jobs:
           ssh \
             -i ~/.ssh/drishti_deploy_key \
             -o IdentitiesOnly=yes \
+            -o ConnectTimeout=30 \
+            -o ConnectionAttempts=3 \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=6 \
             -o StrictHostKeyChecking=accept-new \
             "$DEPLOY_USER_CLEAN@$DEPLOY_HOST_CLEAN" \
             'bash -se' <<'REMOTE'
@@ -111,12 +120,26 @@ jobs:
                 -f deployment/docker/compose.https.yml \
                 config -q
 
-              echo "=== Building and starting services ==="
+              echo "=== Downloading service images with retries ==="
+              bash deployment/scripts/retry.sh docker compose --env-file .env \
+                -f deployment/docker/compose.p0.3.yml \
+                -f deployment/docker/compose.gpu.yml \
+                -f deployment/docker/compose.https.yml \
+                pull --ignore-buildable
+
+              echo "=== Building images with retries ==="
+              bash deployment/scripts/retry.sh docker compose --env-file .env \
+                -f deployment/docker/compose.p0.3.yml \
+                -f deployment/docker/compose.gpu.yml \
+                -f deployment/docker/compose.https.yml \
+                build
+
+              echo "=== Starting services ==="
               docker compose --env-file .env \
                 -f deployment/docker/compose.p0.3.yml \
                 -f deployment/docker/compose.gpu.yml \
                 -f deployment/docker/compose.https.yml \
-                up -d --build --remove-orphans
+                up -d --no-build --remove-orphans
 
               echo "=== Waiting for backend ==="
               for i in $(seq 1 30); do
@@ -149,7 +172,7 @@ jobs:
 
               echo "=== Checking backend health ==="
               for i in $(seq 1 30); do
-                if curl --fail --silent http://127.0.0.1:8000/health/ready > /dev/null; then
+                if curl --fail --silent --connect-timeout 5 --max-time 10 http://127.0.0.1:8000/health/ready > /dev/null; then
                   echo "Backend health check passed."
                   break
                 fi
@@ -175,7 +198,8 @@ jobs:
                 ps
 
               echo "=== Checking application ==="
-              curl --fail --silent \
+              curl --fail --silent --show-error --connect-timeout 10 --max-time 20 \
+                --retry 5 --retry-connrefused --retry-delay 5 \
                 https://drashti-ai.devs.surf/api/v1/health > /dev/null
 
               echo "=== Deployment successful ==="
