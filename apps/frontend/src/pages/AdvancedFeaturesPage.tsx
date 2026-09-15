@@ -24,7 +24,8 @@ export function AdvancedFeaturesPage() {
   }, []);
   return <div className="advanced-features">
     <header><span className="advanced-kicker">LIVE VIDEO WORKSPACE</span><h1>Advanced Features</h1>
-      <p>Choose a camera and give its live feed a task.</p></header>
+      <p>Choose a camera and give its live feed a task.</p>
+      <p>Border Line, Virtual Fence and Object Path use SAHI + YOLO with overlapping slices and a full-frame pass. Night Movement uses low-light motion detection.</p></header>
     <label className="advanced-camera">Camera / stream
       <select value={camera} onChange={event => setCamera(event.target.value)}>
         <option value="">Select a camera</option>

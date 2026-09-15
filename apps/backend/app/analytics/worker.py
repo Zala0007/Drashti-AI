@@ -288,7 +288,9 @@ class _UltralyticsDetector:
             slice_width=self._sahi_slice_width,
             overlap_height_ratio=self._sahi_overlap_ratio,
             overlap_width_ratio=self._sahi_overlap_ratio,
-            perform_standard_pred=False,
+            # Merge a full-frame pass with slices so objects spanning tile
+            # boundaries remain available to fence, crossing and path tracking.
+            perform_standard_pred=True,
             postprocess_type="NMS",
             postprocess_match_metric="IOU",
             postprocess_match_threshold=0.5,

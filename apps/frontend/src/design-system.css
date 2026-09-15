@@ -210,6 +210,132 @@ html[data-theme] .ai-modal > article { color: var(--text); background: var(--sur
 .analytics-box--plate rect { fill: rgb(196 122 32 / 9%); stroke: #ffbf58; }
 .analytics-box text { fill: #fff; stroke: rgb(0 0 0 / 82%); stroke-width: 3; paint-order: stroke; font-size: 11px; font-weight: 700; }
 .analytics-box--plate text { fill: #ffd38a; }
+/* Operational cards and controls share foreground/background pairs in both themes. */
+html[data-theme] :is(.gis-rail > section, .gis-map-panel, .gis-search-results button) {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--line);
+}
+html[data-theme] :is(.gis-rail > section > header, .health-metric, .visual-provider-card dl > div) {
+  color: var(--text);
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+html[data-theme] .visual-provider-card dl { background: var(--line); }
+html[data-theme] :is(.gis-rail h2, .health-metric strong, .selection-empty strong, .gis-selected-card dd, .selected-camera-title strong, .gis-search-results button strong) { color: var(--text); }
+html[data-theme] :is(.selection-empty p, .gis-selected-card dt, .selected-camera-title code, .gis-search-results button small, .gis-filter-shell__heading small) { color: var(--muted); }
+html[data-theme] .gis-filter-shell__heading strong { color: var(--text); }
+html[data-theme] .gis-filter-shell { color: var(--text); background: var(--surface); border-color: var(--line); }
+html[data-theme] .gis-filter-shell__heading { background: var(--surface-2); border-color: var(--line); }
+html[data-theme] .filter-source-note { color: var(--amber); }
+html[data-theme] .filter-source-note--live { color: var(--green); }
+html[data-theme] .map-scale-note { color: var(--muted); }
+html[data-theme] .map-scale-note strong { color: var(--text); }
+html[data-theme] :is(.route-readiness-card strong, .alert-readiness-card strong) { color: var(--violet); }
+html[data-theme] :is(.route-readiness-card small, .alert-readiness-card small) { color: var(--muted); }
+html[data-theme] .health-metric--online { color: var(--green); }
+html[data-theme] .health-metric--offline { color: var(--red); }
+html[data-theme] .health-metric--degraded { color: var(--amber); }
+html[data-theme] .health-metric--unknown { color: var(--muted); }
+html[data-theme] .health-metric small { color: inherit; }
+html[data-theme] :is(.live-bulk-action, .engine-posture, .federation-hero__trust span, .topology-freshness, .advanced-masthead > aside) {
+  color: var(--text);
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+html[data-theme] :is(.live-bulk-action--start, .engine-posture--ready) {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--green) 40%, var(--line));
+}
+html[data-theme] .live-bulk-action--stop {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--red) 40%, var(--line));
+}
+html[data-theme] :is(.advanced-masthead > aside strong, .case-rail button strong) { color: var(--text); }
+html[data-theme] :is(.advanced-masthead > aside small, .case-rail > header span, .case-rail button small, .case-rail button em, .case-workspace__header p) { color: var(--muted); }
+html[data-theme] .government-feed-button {
+  color: var(--cyan-bright) !important;
+  background: var(--accent-soft) !important;
+  border-color: var(--line-strong) !important;
+}
+html[data-theme] :is(.sie-case-actions button, .case-workspace__header button, .health-fleet__table > button, .case-rail button) {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--line);
+}
+html[data-theme] .health-fleet__table > button b { color: var(--text); }
+html[data-theme] :is(.health-fleet__table > button small, .health-fleet__head, .health-kpi small, .health-kpi em) { color: var(--muted); }
+html[data-theme] :is(.health-fleet__table > button:hover, .health-fleet__table > button.active, .case-rail button:hover, .case-rail button.active) {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+html[data-theme] :is(.live-bulk-action, .sie-case-actions button, .case-workspace__header button, .visual-provider-actions button):not(:disabled):hover {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 1px var(--cyan);
+}
+html[data-theme] :is(.button, .live-bulk-action, .sie-case-actions button, .case-workspace__header button, .visual-search button, .visual-provider-actions button):disabled {
+  color: var(--muted);
+  background: var(--surface-3);
+  border-color: var(--line);
+  opacity: 1;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+/* Notification banners: semantic accents with readable theme-aware copy. */
+html[data-theme] :is(
+  .federation-service-error, .federation-operation-error, .command-error,
+  .gis-inline-error, .advanced-alert, .runtime-drawer-error, .runtime-safe-error,
+  .runtime-ai-boundary, .drawer-inline-error, .safe-error-summary, .live-ops__error,
+  .government-feed-sync__error, .import-result--error, .state-panel--error,
+  .federation-list-state--error, .visual-alert, .visual-notice, .readiness-notice
+) {
+  --notice-tone: var(--red);
+  color: var(--notice-tone);
+  background: color-mix(in srgb, var(--notice-tone) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--notice-tone) 35%, var(--line));
+}
+html[data-theme] .runtime-operation-error { --notice-tone: var(--amber); }
+html[data-theme] .readiness-notice { --notice-tone: var(--cyan); }
+html[data-theme] .visual-notice { --notice-tone: var(--green); }
+html[data-theme] :is(
+  .federation-service-error, .federation-operation-error, .command-error,
+  .gis-inline-error, .advanced-alert, .runtime-drawer-error, .runtime-safe-error,
+  .runtime-ai-boundary, .drawer-inline-error, .safe-error-summary, .live-ops__error,
+  .government-feed-sync__error, .import-result--error, .state-panel--error,
+  .federation-list-state--error, .visual-alert, .visual-notice, .readiness-notice
+) :is(strong, svg) { color: var(--notice-tone); }
+html[data-theme] :is(
+  .federation-service-error, .federation-operation-error, .command-error,
+  .gis-inline-error, .advanced-alert, .runtime-drawer-error, .runtime-safe-error,
+  .runtime-ai-boundary, .drawer-inline-error, .safe-error-summary, .live-ops__error,
+  .government-feed-sync__error, .import-result--error, .state-panel--error,
+  .federation-list-state--error, .visual-alert, .visual-notice, .readiness-notice
+) :is(small, p) { color: var(--text); }
+html[data-theme] :is(
+  .federation-service-error, .federation-operation-error, .command-error,
+  .gis-inline-error, .advanced-alert, .runtime-drawer-error, .drawer-inline-error,
+  .government-feed-sync__error, .visual-alert, .visual-notice
+) button {
+  color: var(--notice-tone);
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--notice-tone) 45%, var(--line));
+  opacity: 1;
+}
+html[data-theme] :is(
+  .federation-service-error, .federation-operation-error, .command-error,
+  .gis-inline-error, .advanced-alert, .runtime-drawer-error, .drawer-inline-error,
+  .government-feed-sync__error, .visual-alert, .visual-notice
+) button:not(:disabled):hover {
+  background: color-mix(in srgb, var(--notice-tone) 12%, var(--surface));
+  border-color: var(--notice-tone);
+}
+html[data-theme] :is(
+  .federation-service-error, .federation-operation-error, .command-error,
+  .gis-inline-error, .advanced-alert, .runtime-drawer-error, .drawer-inline-error,
+  .government-feed-sync__error, .visual-alert, .visual-notice
+) button:disabled { color: var(--muted); background: var(--surface-3); border-color: var(--line); cursor: not-allowed; }
 /* Tile-only styling keeps camera markers, popups and attribution legible. */
 html[data-theme] :is(.map-shell, .sie-map, .coverage-map-panel) .leaflet-tile-pane { filter: none; opacity: 1; }
 html[data-theme] :is(.map-shell, .sie-map, .coverage-map-panel, .gis-map, .command-map, .registry-map, .leaflet-container) { filter: none; }

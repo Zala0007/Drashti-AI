@@ -26,6 +26,13 @@ detections and per-camera tracker, rather than opening another camera connection
 or launching desktop OpenCV windows. Recognition quality depends on those tracks.
 The scripts themselves remain available for standalone use.
 
+Object detection uses SAHI with overlapping slices and a full-frame prediction,
+merged with non-maximum suppression before tracking. The full-frame pass helps
+retain objects spanning slice boundaries, at the cost of additional inference
+time. Night Movement retains background subtraction and motion confirmation;
+it does not require a recognized person or vehicle to trigger. Plate detection
+continues to use direct YOLO without SAHI.
+
 The backend must run with analytics dependencies installed and
 `LIVE_ANALYTICS_ENABLED=true`. Processing requires a running stream; opening the
 preview alone does not start inference. Preview and analytics arrive separately,
