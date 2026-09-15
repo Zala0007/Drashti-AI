@@ -9,9 +9,9 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-logger = logging.getLogger("drishti.ocr")
-
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+
+logger = logging.getLogger("drishti.ocr")
 
 INDIAN_STATE_CODES = {
     "AN",
@@ -330,6 +330,17 @@ class GooglePlateOCR:
         return self.recognize_batch([crop])[0]
 
 
+def is_google_auth_error(error: Exception) -> bool:
+    """Credentials/permissions cannot recover by retrying the same plate crop."""
+    try:
+        from google.api_core.exceptions import Forbidden, Unauthorized
+        from google.auth.exceptions import DefaultCredentialsError, RefreshError
+    except ImportError:
+        return False
+
+    return isinstance(error, (Forbidden, Unauthorized, DefaultCredentialsError, RefreshError))
+
+
 def is_groq_rate_limit(exc: Exception) -> bool:
     try:
         from groq import RateLimitError
@@ -397,8 +408,9 @@ class GroqPlateOCR:
                         {
                             "role": "system",
                             "content": (
-                                "You are a strict vehicle-registration OCR reader. Read only characters "
-                                "visibly printed on the actual plate. Ignore reflections and shadows. "
+                                "You are a strict vehicle-registration OCR reader. "
+                                "Read only characters visibly printed on the actual plate. "
+                                "Ignore reflections and shadows. "
                                 "Never infer hidden characters."
                             ),
                         },
@@ -408,7 +420,8 @@ class GroqPlateOCR:
                                 {
                                     "type": "text",
                                     "text": (
-                                        "Return JSON with raw_text, plate_text, and confidence from 0 to "
+                                        "Return JSON with raw_text, plate_text, "
+                                        "and confidence from 0 to "
                                         "1. Use empty strings and confidence 0 when unreadable."
                                     ),
                                 },

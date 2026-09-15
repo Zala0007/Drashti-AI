@@ -21,7 +21,9 @@ from app.analytics.ocr import (
     HybridOCRReconciler,
     OCRDecision,
     OCRReading,
+    is_google_auth_error,
 )
+from app.analytics.spatial import SpatialAnalytics
 from app.stream_engine import StreamEngine
 from app.stream_engine.types import FramePacket
 
@@ -37,6 +39,7 @@ class AnalyticsConfig:
     evidence_database: str = "./AI-Features/crops.db"
     confidence: float = 0.4
     plate_confidence: float = 0.35
+    plate_image_size: int = 1280
     sahi_slice_height: int = 256
     sahi_slice_width: int = 256
     sahi_overlap_ratio: float = 0.2
@@ -218,6 +221,7 @@ class _UltralyticsDetector:
 
         self._confidence = config.confidence
         self._plate_confidence = config.plate_confidence
+        self._plate_image_size = config.plate_image_size
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
@@ -318,6 +322,7 @@ class _UltralyticsDetector:
             plate_prediction = self._plate_model.predict(
                 source=image,
                 conf=self._plate_confidence,
+                imgsz=self._plate_image_size,
                 device=self.device,
                 verbose=False,
             )
@@ -885,6 +890,7 @@ class LiveAnalyticsWorker:
         self._detector = detector
         self._writer: _EvidenceWriter | None = None
         self._ocr: GooglePlateOCR | None = None
+        self.spatial = SpatialAnalytics(config.evidence_database)
         self._groq_ocr: GroqPlateOCR | None = None
         self._ocr_reconciler = HybridOCRReconciler(
             google_accept_confidence=config.google_accept_confidence,
@@ -930,6 +936,7 @@ class LiveAnalyticsWorker:
         if self._writer is not None:
             self._writer.close()
             self._writer = None
+        self.spatial.close()
 
     def _run(self) -> None:
         try:
@@ -976,6 +983,10 @@ class LiveAnalyticsWorker:
         inference_ms: float,
     ) -> None:
         detections = self._assign_tracks(packet.camera_id, detections)
+        try:
+            self.spatial.process(packet, image, detections)
+        except Exception:
+            logger.exception("Spatial analytics failed for camera %s", packet.camera_id)
         modules = {"live_overlay"}
         now = time.monotonic()
         vehicles = [item for item in detections if item.class_name in VEHICLE_CLASSES]
@@ -1069,7 +1080,7 @@ class LiveAnalyticsWorker:
     def _assign_tracks(
         self, camera_id: str, detections: list[AnalyticsDetection]
     ) -> list[AnalyticsDetection]:
-        vehicles = [item for item in detections if item.class_name in VEHICLE_CLASSES]
+        vehicles = [item for item in detections if item.kind == "object"]
         plates = [item for item in detections if item.kind == "plate"]
         vehicle_tracker = self._vehicle_trackers.setdefault(
             camera_id, _IoUTracker(minimum_iou=0.18, maximum_misses=15)
@@ -1081,7 +1092,7 @@ class LiveAnalyticsWorker:
         plate_ids = iter(plate_tracker.update(plates))
         tracked: list[AnalyticsDetection] = []
         for detection in detections:
-            if detection.class_name in VEHICLE_CLASSES:
+            if detection.kind == "object":
                 tracked.append(replace(detection, track_id=next(vehicle_ids)))
             elif detection.kind == "plate":
                 tracked.append(replace(detection, track_id=next(plate_ids)))
@@ -1175,6 +1186,7 @@ class LiveAnalyticsWorker:
         self, job: _OCRJob, error: Exception, *, immediate_fallback: bool = False
     ) -> None:
         assert self._writer is not None
+        immediate_fallback = immediate_fallback or is_google_auth_error(error)
         if immediate_fallback and self._groq_fallback_available:
             google = OCRReading(
                 provider="google", text="", confidence=0.0, error=str(error)

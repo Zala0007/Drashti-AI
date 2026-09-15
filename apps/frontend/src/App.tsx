@@ -9,6 +9,7 @@ import type { Camera, CameraGeoJson, CameraStatistics, Department } from "./type
 
 const CameraRegistryPage = lazy(() => import("./pages/CameraRegistryPage").then((module) => ({ default: module.CameraRegistryPage })));
 const AIIntelligencePage = lazy(() => import("./pages/AIIntelligencePage").then((module) => ({ default: module.AIIntelligencePage })));
+const AdvancedFeaturesPage = lazy(() => import("./pages/AdvancedFeaturesPage").then((module) => ({ default: module.AdvancedFeaturesPage })));
 const VisualIntelligencePage = lazy(() => import("./pages/VisualIntelligencePage").then((module) => ({ default: module.VisualIntelligencePage })));
 const CameraHealthPage = lazy(() => import("./pages/CameraHealthPage").then((module) => ({ default: module.CameraHealthPage })));
 const CasesEvidencePage = lazy(() => import("./pages/CasesEvidencePage").then((module) => ({ default: module.CasesEvidencePage })));
@@ -21,6 +22,7 @@ const federationPageModule = import("./pages/StreamFederationPage");
 const StreamFederationPage = lazy(() => federationPageModule.then((module) => ({ default: module.StreamFederationPage })));
 
 const routes: Record<string, AppPage> = {
+  "#/advanced": "advanced",
   "#/command": "command",
   "#/ai": "ai",
   "#/visual": "visual",
@@ -167,6 +169,7 @@ export default function App() {
       ) : null}
 
       {activePage === "ai" ? <AIIntelligencePage /> : null}
+      {activePage === "advanced" ? <AdvancedFeaturesPage /> : null}
 
       {activePage === "visual" ? <VisualIntelligencePage /> : null}
 

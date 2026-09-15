@@ -23,7 +23,7 @@ import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import type { FederationStatistics } from "../types/federation";
 import type { CameraStatistics } from "../types/registry";
 
-export type AppPage = "command" | "ai" | "visual" | "investigation" | "alerts" | "cases" | "health" | "coverage" | "federation" | "live" | "gis" | "registry";
+export type AppPage = "command" | "ai" | "advanced" | "visual" | "investigation" | "alerts" | "cases" | "health" | "coverage" | "federation" | "live" | "gis" | "registry";
 
 interface AppShellProps {
   children: ReactNode;
@@ -36,6 +36,7 @@ interface AppShellProps {
 }
 
 const pageMeta: Record<AppPage, { label: string; eyebrow: string }> = {
+  advanced: { label: "Advanced Features", eyebrow: "Draw, monitor and track on a selected feed" },
   command: { label: "Command Centre", eyebrow: "State Operations Centre" },
   ai: { label: "Video Analytics", eyebrow: "Evidence review and model output" },
   visual: { label: "Visual Intelligence", eyebrow: "Search by appearance when the plate is unknown" },
@@ -63,6 +64,7 @@ const navSections = [
     label: "Intelligence",
     items: [
       { id: "ai", label: "Video Analytics", icon: BrainCircuit },
+      { id: "advanced", label: "Advanced Features", icon: ScanEye },
       { id: "visual", label: "Visual Intelligence", icon: ScanEye },
       { id: "investigation", label: "Special Investigation", icon: ScanSearch },
       { id: "alerts", label: "Watchlist Alerts", icon: BellRing },

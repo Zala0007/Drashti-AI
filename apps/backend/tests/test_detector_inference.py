@@ -11,6 +11,7 @@ def test_objects_use_sahi_and_plates_use_full_frame_yolo(has_plate: bool) -> Non
     detector = object.__new__(_UltralyticsDetector)
     detector.device = "cpu"
     detector._plate_confidence = 0.35
+    detector._plate_image_size = 1280
     detector._general_sahi = object()
     detector._predict_sahi = Mock(return_value=SimpleNamespace(object_prediction_list=[
         SimpleNamespace(
@@ -33,7 +34,7 @@ def test_objects_use_sahi_and_plates_use_full_frame_yolo(has_plate: bool) -> Non
     assert image.size == (160, 90)
     detector._predict_sahi.assert_called_once_with(image, detector._general_sahi)
     detector._plate_model.predict.assert_called_once_with(
-        source=image, conf=0.35, device="cpu", verbose=False
+        source=image, conf=0.35, imgsz=1280, device="cpu", verbose=False
     )
     assert detections[0].kind == "object"
     assert detections[0].class_name == "car"

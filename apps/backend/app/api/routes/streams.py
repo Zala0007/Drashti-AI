@@ -8,7 +8,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import StreamingResponse
 
-from app.api.dependencies import get_stream_engine, get_stream_processing_service
+from app.analytics.spatial import SpatialRule
+from app.api.dependencies import (
+    get_registry_service,
+    get_stream_engine,
+    get_stream_processing_service,
+)
 from app.errors import NotFoundError
 from app.schemas.streams import (
     AnalyticsCapabilitiesRead,
@@ -21,10 +26,29 @@ from app.schemas.streams import (
     StreamStartRequest,
     stream_session_read,
 )
+from app.services import RegistryService
 from app.services.streams import StreamProcessingService
 from app.stream_engine import StreamEngine
 
 router = APIRouter(prefix="/streams", tags=["stream-processing"])
+
+
+@router.get("/{camera_id}/spatial")
+def spatial_status(
+    camera_id: UUID, request: Request,
+    registry: Annotated[RegistryService, Depends(get_registry_service)],
+):
+    registry.get_camera(str(camera_id))
+    return request.app.state.analytics_worker.spatial.read(str(camera_id))
+
+
+@router.put("/{camera_id}/spatial")
+def save_spatial_rule(
+    camera_id: UUID, payload: SpatialRule, request: Request,
+    registry: Annotated[RegistryService, Depends(get_registry_service)],
+):
+    registry.get_camera(str(camera_id))
+    return request.app.state.analytics_worker.spatial.save(str(camera_id), payload)
 
 
 @router.get("/analytics/capabilities", response_model=AnalyticsCapabilitiesRead)

@@ -77,3 +77,21 @@ docker compose --env-file .env \
 ```
 
 See [Google Cloud Vision authentication](https://docs.cloud.google.com/vision/docs/authentication).
+
+## Plate detection troubleshooting
+
+`LIVE_ANALYTICS_PLATE_IMAGE_SIZE=1280` controls the direct YOLO plate pass;
+general object detection continues to use SAHI. `LIVE_ANALYTICS_PLATE_CONFIDENCE`
+is now passed into the deployed container, so VM `.env` tuning takes effect.
+Increasing inference size cannot restore detail already discarded by decoding.
+For a plate-focused camera trial, use a high-resolution source and set
+`STREAM_ENGINE_OUTPUT_WIDTH=1280` and `STREAM_ENGINE_OUTPUT_HEIGHT=720` on the VM.
+These output settings affect all sessions: benchmark GPU throughput with fewer
+active cameras before increasing resolution for the whole installation.
+Recreate the backend and restart the selected stream to apply the settings.
+
+Google 401/403 errors now go straight to configured Groq fallback rather than
+retrying the same unauthorized request three times. They still require fixing
+the attached service account, API enablement/billing, or VM access scopes.
+Run the synthetic Google check above on the VM to identify the specific cause;
+never commit a service-account JSON key to solve metadata authentication errors.

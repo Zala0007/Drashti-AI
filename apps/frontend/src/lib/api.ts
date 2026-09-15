@@ -11,6 +11,7 @@ import type {
   ImportResult,
   Page,
 } from "../types/registry";
+import type { SpatialRule, SpatialStatus } from "../types/spatial";
 import type {
   FederationAdapter,
   FederationAdapterCatalog,
@@ -579,6 +580,17 @@ export const federationApi = {
 };
 
 export const streamApi = {
+  spatial(cameraId: string, signal?: AbortSignal): Promise<SpatialStatus> {
+    return request(`/streams/${encodeURIComponent(cameraId)}/spatial`, {}, signal);
+  },
+  saveSpatial(cameraId: string, rule: SpatialRule): Promise<SpatialRule> {
+    return request(`/streams/${encodeURIComponent(cameraId)}/spatial`, {
+      method: "PUT", body: JSON.stringify(rule),
+    });
+  },
+  spatialCameras(signal?: AbortSignal): Promise<Page<Camera>> {
+    return request("/cameras?page_size=500", {}, signal);
+  },
   sessions(signal?: AbortSignal): Promise<ProcessingStreamSessionList> {
     return request<ProcessingStreamSessionList>("/streams", {}, signal);
   },

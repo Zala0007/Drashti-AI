@@ -149,6 +149,7 @@ def create_app(
             evidence_database=app_settings.ai_showcase_database,
             confidence=app_settings.live_analytics_confidence,
             plate_confidence=app_settings.live_analytics_plate_confidence,
+            plate_image_size=app_settings.live_analytics_plate_image_size,
             sahi_slice_height=app_settings.live_analytics_sahi_slice_height,
             sahi_slice_width=app_settings.live_analytics_sahi_slice_width,
             sahi_overlap_ratio=app_settings.live_analytics_sahi_overlap_ratio,

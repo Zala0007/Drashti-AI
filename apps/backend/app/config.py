@@ -124,6 +124,7 @@ class Settings:
     live_analytics_plate_model: str = "./AI-Features/models/license_plate_detector.pt"
     live_analytics_confidence: float = 0.4
     live_analytics_plate_confidence: float = 0.35
+    live_analytics_plate_image_size: int = 1280
     live_analytics_sahi_slice_height: int = 256
     live_analytics_sahi_slice_width: int = 256
     live_analytics_sahi_overlap_ratio: float = 0.2
@@ -313,6 +314,13 @@ class Settings:
                 minimum=0.05,
                 maximum=1.0,
                 name="LIVE_ANALYTICS_PLATE_CONFIDENCE",
+            ),
+            live_analytics_plate_image_size=_as_bounded_int(
+                os.getenv("LIVE_ANALYTICS_PLATE_IMAGE_SIZE"),
+                default=1280,
+                minimum=320,
+                maximum=2048,
+                name="LIVE_ANALYTICS_PLATE_IMAGE_SIZE",
             ),
             live_analytics_sahi_slice_height=int(
                 os.getenv("LIVE_ANALYTICS_SAHI_SLICE_HEIGHT", "256")

@@ -4,7 +4,9 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
+import pytest
 from PIL import Image
 
 from app.analytics.ocr import HybridOCRReconciler, OCRReading
@@ -21,6 +23,30 @@ from app.stream_engine.types import FramePacket, ProcessingStreamState
 class FakeDetector:
     device = "cuda:0"
     model_name = "test-models"
+
+
+@pytest.mark.parametrize("status", [401, 403, 503])
+def test_google_auth_errors_fall_back_without_retry_delays(status: int) -> None:
+    from google.api_core.exceptions import from_http_status
+
+    worker = LiveAnalyticsWorker(
+        SimpleNamespace(), AnalyticsConfig(groq_api_keys=("test-key",)),
+        detector=FakeDetector(),
+    )
+    worker._writer = Mock()
+    worker._writer.fail_google.return_value = 1
+    worker._stop = Mock()
+    job = SimpleNamespace(row_id=1)
+    worker._handle_google_failure(job, from_http_status(status, "provider error"))
+    if status in (401, 403):
+        worker._writer.request_groq_fallback.assert_called_once()
+        worker._writer.fail_google.assert_not_called()
+        worker._stop.wait.assert_not_called()
+        assert worker._groq_ocr_queue.get_nowait().job is job
+    else:
+        worker._writer.fail_google.assert_called_once()
+        worker._writer.request_groq_fallback.assert_not_called()
+        worker._stop.wait.assert_called_once()
 
 
 def test_numbered_groq_keys_enable_fallback_without_legacy_single_key() -> None:
