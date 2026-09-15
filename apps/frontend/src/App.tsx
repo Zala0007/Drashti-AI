@@ -58,6 +58,10 @@ export default function App() {
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = useCallback(() => setRefreshKey((value) => value + 1), []);
+  useEffect(() => {
+    const timer = window.setInterval(() => { if (!document.hidden) refresh(); }, 20000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
   const handleDepartmentCreated = useCallback((department: Department) => {
     setDepartments((current) => [...current.filter((item) => item.id !== department.id), department]
       .sort((left, right) => left.name.localeCompare(right.name)));

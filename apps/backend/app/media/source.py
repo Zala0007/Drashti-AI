@@ -55,7 +55,7 @@ class MediaSourceResolver:
         if profile.adapter_kind not in DECODABLE_ADAPTERS:
             raise ConflictError(
                 "STREAM_ADAPTER_UNSUPPORTED",
-                "This connection must resolve a concrete media URI before P04 handoff",
+                "This connection must resolve a concrete media URI before stream processing handoff",
             )
         endpoint = self.cipher.decrypt(profile.endpoint_ciphertext)
         lease: CredentialLease | None = None

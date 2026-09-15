@@ -292,7 +292,7 @@ export function LiveOperationsPage() {
     <section className="live-ops">
       <header className="live-ops__hero">
         <div>
-          <span className="section-eyebrow"><Radio size={14} /> P04 · Video stream processing</span>
+          <span className="section-eyebrow"><Radio size={14} /> · Video stream processing</span>
           <h1>Live Operations Matrix</h1>
           <p>Latest-frame-first monitoring, decoder supervision and AI-ready batch dispatch across federated cameras.</p>
         </div>
@@ -337,7 +337,7 @@ export function LiveOperationsPage() {
         <StreamKpi icon={Clock3} label="Frame latency" value={`${number(metrics?.average_latency_ms ?? 0)} ms`} detail="Receive-to-dispatch estimate" tone={(metrics?.average_latency_ms ?? 0) > 750 ? "amber" : "green"} />
         <StreamKpi icon={Activity} label="Dropped frames" value={number(metrics?.total_frames_dropped ?? 0)} detail="Bounded latency protection" />
         <StreamKpi icon={RotateCcw} label="Reconnects" value={number(metrics?.total_reconnects ?? 0)} detail={`${metrics?.reconnecting_streams ?? 0} reconnecting now`} tone={(metrics?.reconnecting_streams ?? 0) ? "amber" : undefined} />
-        <StreamKpi icon={BrainCircuit} label="AI inference" value={analyticsCapabilities?.status ?? `${metrics?.scheduler_queue_depth ?? 0} queued`} detail={analyticsCapabilities?.device ? `${analyticsCapabilities.device} · ${analytics.length} cameras reported` : analyticsCapabilities?.reason ?? (metrics?.ai_consumer_attached ? "Inference consumer attached" : "P05 consumer interface ready")} tone="violet" />
+        <StreamKpi icon={BrainCircuit} label="AI inference" value={analyticsCapabilities?.status ?? `${metrics?.scheduler_queue_depth ?? 0} queued`} detail={analyticsCapabilities?.device ? `${analyticsCapabilities.device} · ${analytics.length} cameras reported` : analyticsCapabilities?.reason ?? (metrics?.ai_consumer_attached ? "Inference consumer attached" : "consumer interface ready")} tone="violet" />
       </div>
 
       <section className="live-assurance" aria-label="Live wall delivery policy">
@@ -383,7 +383,7 @@ export function LiveOperationsPage() {
               <CameraIcon size={24} />
               {cameras.length
                 ? "No camera matches the current wall search."
-                : "Onboard cameras in P01 before starting streams."}
+                : "Onboard cameras in Camera Registry before starting streams."}
             </div>
           ) : null}
           <div className={`video-grid video-grid--${columns}`}>
@@ -481,7 +481,7 @@ export function LiveOperationsPage() {
               <InspectorSection title="AI processing contract" icon={BrainCircuit}>
                 <div className="ai-contract">
                   <span><ShieldCheck size={17} /></span>
-                  <div><strong>{analyticsByCamera.get(selectedCamera.id) ? "Per-camera inference active" : "P04 frame bus ready"}</strong><p>{analyticsByCamera.get(selectedCamera.id) ? `${analyticsByCamera.get(selectedCamera.id)?.detections.length ?? 0} current detections routed to ${(analyticsByCamera.get(selectedCamera.id)?.routed_modules ?? []).join(", ")}.` : analyticsCapabilities?.reason ?? "The fair scheduler will process this camera as soon as its first fresh frame arrives."}</p></div>
+                  <div><strong>{analyticsByCamera.get(selectedCamera.id) ? "Per-camera inference active" : "frame bus ready"}</strong><p>{analyticsByCamera.get(selectedCamera.id) ? `${analyticsByCamera.get(selectedCamera.id)?.detections.length ?? 0} current detections routed to ${(analyticsByCamera.get(selectedCamera.id)?.routed_modules ?? []).join(", ")}.` : analyticsCapabilities?.reason ?? "The fair scheduler will process this camera as soon as its first fresh frame arrives."}</p></div>
                 </div>
                 <div className="ai-capability-list">
                   {(selectedCamera.ai_capabilities.length ? selectedCamera.ai_capabilities : ["vehicle_detection", "anpr"]).map((capability) => <span key={capability}>{capability.replaceAll("_", " ")}</span>)}

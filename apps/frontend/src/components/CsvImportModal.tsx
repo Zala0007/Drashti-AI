@@ -81,7 +81,7 @@ export function CsvImportModal({ open, onClose, onImported }: CsvImportModalProp
   };
 
   return (
-    <Modal open={open} onClose={close} title="Bulk onboard camera assets" eyebrow="P0.1 · CSV import" busy={uploading}>
+    <Modal open={open} onClose={close} title="Bulk onboard camera assets" eyebrow="· CSV import" busy={uploading}>
       <div className="modal__body csv-import">
         <div className="import-guidance">
           <span><FileSpreadsheet aria-hidden="true" size={20} /></span>

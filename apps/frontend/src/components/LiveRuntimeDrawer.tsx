@@ -125,7 +125,7 @@ export function LiveRuntimeDrawer({
       <button className="drawer-scrim" aria-label="Close live media" onClick={onClose} />
       <aside className="detail-drawer runtime-drawer" aria-label="Live media runtime">
         <header className="detail-drawer__header runtime-drawer__header">
-          <div><span className="eyebrow">P0.3R / Browser media delivery</span><h2>{session?.camera.camera_name ?? "Live runtime"}</h2>{session ? <code>{session.camera.camera_code} / {session.profile.name}</code> : null}</div>
+          <div><span className="eyebrow">Browser media delivery</span><h2>{session?.camera.camera_name ?? "Live runtime"}</h2>{session ? <code>{session.camera.camera_code} / {session.profile.name}</code> : null}</div>
           <button type="button" aria-label="Close live media" onClick={onClose} disabled={Boolean(action)}><X aria-hidden="true" size={20} /></button>
         </header>
         <div className="runtime-drawer__body">

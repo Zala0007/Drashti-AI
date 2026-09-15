@@ -49,6 +49,16 @@ export function CameraHealthPage() {
     return () => controller.abort();
   }, [load]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void load(controller.signal).catch((cause) => {
+        if (!controller.signal.aborted) setError(cause instanceof ApiError ? cause.message : "Health telemetry is unavailable.");
+      });
+    }, 10000);
+    return () => { controller.abort(); window.clearInterval(timer); };
+  }, [load]);
+
   const select = async (cameraId: string) => {
     setSelectedCameraId(cameraId);
     try { setHistory(await advancedApi.healthHistory(cameraId)); }
@@ -71,7 +81,7 @@ export function CameraHealthPage() {
   const operational = (states.healthy ?? 0) + (states.degraded ?? 0);
   return <div className="advanced-page health-page">
     <section className="advanced-masthead health-masthead">
-      <div><span className="advanced-emblem"><HeartPulse size={25} /><i /></span><span><small>P-S03 · Operational resilience</small><h1>Camera Health & Maintenance</h1><p>Measured stream posture, incident grouping and explainable maintenance trends.</p></span></div>
+      <div><span className="advanced-emblem"><HeartPulse size={25} /><i /></span><span><small>· Operational resilience</small><h1>Camera Health & Maintenance</h1><p>Measured stream posture, incident grouping and explainable maintenance trends.</p></span></div>
       <button className="button button--primary" type="button" disabled={busy} onClick={() => void capture()}>{busy ? <LoaderCircle className="spin" size={16} /> : <RadioTower size={16} />}Capture live telemetry</button>
     </section>
     {error ? <div className="advanced-alert"><TriangleAlert size={16} />{error}<button type="button" onClick={() => setError(null)}><X size={14} /></button></div> : null}
@@ -85,7 +95,7 @@ export function CameraHealthPage() {
     <div className="health-layout">
       <section className="health-fleet">
         <header><div><span className="panel-kicker">Statewide fleet matrix</span><h2>Camera telemetry</h2></div><span><i />Persisted aggregates</span></header>
-        <div className="health-fleet__table"><div className="health-fleet__head"><span>Camera</span><span>State</span><span>Decode</span><span>Latency</span><span>Availability</span><span>Source</span></div>{dashboard?.latest.map((item) => <button key={item.id} type="button" className={selectedCameraId === item.camera.id ? "active" : ""} onClick={() => void select(item.camera.id)}><span><i className={`health-dot health-dot--${item.health_state}`} /><b>{item.camera.camera_code}</b><small>{item.camera.camera_name}</small></span><span><em className={`advanced-tone advanced-tone--${item.health_state}`}>{titleCase(item.health_state)}</em></span><span>{item.decoded_fps == null ? "—" : `${item.decoded_fps.toFixed(1)} fps`}</span><span>{item.latency_ms == null ? "—" : `${Math.round(item.latency_ms)} ms`}</span><span>{Math.round(item.availability * 100)}%</span><span>{titleCase(item.source)}</span></button>)}</div>
+        <div className="health-fleet__table"><div className="health-fleet__head"><span>Camera</span><span>State</span><span>Decode</span><span>Latency</span><span>Availability</span><span>Source</span></div>{dashboard?.latest.map((item) => <button key={item.id} type="button" className={selectedCameraId === item.camera.id ? "active" : ""} onClick={() => void select(item.camera.id)}><span><i className={`health-dot health-dot--${item.health_state}`} /><b>{item.camera.camera_code}</b><small>{item.camera.camera_name}</small></span><span><em className={`advanced-tone advanced-tone--${item.health_state}`}>{titleCase(item.health_state)}</em></span><span>{item.decoded_fps == null ? "—" : `${item.decoded_fps.toFixed(1)} fps`}</span><span>{item.latency_ms == null ? "—" : `${Math.round(item.latency_ms)} ms`}</span><span>{Math.round(item.availability * 100)}%</span><span>{titleCase(item.source.replace(/^p\d+_/i, ""))}</span></button>)}</div>
         {loading ? <div className="advanced-loading"><LoaderCircle className="spin" size={19} />Loading measured fleet posture…</div> : !dashboard?.latest.length ? <div className="advanced-empty"><Signal size={26} /><strong>No aggregate telemetry yet</strong><p>Capture a live snapshot to persist stream-engine or registry-heartbeat measurements.</p></div> : null}
       </section>
       <aside className="health-inspector">

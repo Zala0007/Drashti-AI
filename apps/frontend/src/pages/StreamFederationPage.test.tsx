@@ -193,7 +193,7 @@ function createApi(options: { probeFails?: boolean; detailFails?: boolean; runti
   return fetchMock;
 }
 
-describe("P0.3 Stream Federation", () => {
+describe("Stream Federation", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("renders API-backed probe posture without fabricating active streams or edge readiness", async () => {

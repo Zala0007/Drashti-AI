@@ -107,7 +107,7 @@ describe("Drishti application runtime", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Live Operations" }));
     expect(await screen.findByRole("heading", { name: "Live Operations Matrix" })).toBeInTheDocument();
-    expect(await screen.findByText("Onboard cameras in P01 before starting streams.")).toBeInTheDocument();
+    expect(await screen.findByText("Onboard cameras in Camera Registry before starting streams.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "GIS Operations" }));
     expect(await screen.findByRole("heading", { name: "GIS Operations" })).toBeInTheDocument();

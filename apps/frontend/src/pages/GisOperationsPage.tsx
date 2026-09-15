@@ -51,6 +51,10 @@ export function GisOperationsPage({ departments, focusedCameraId, onFocusCamera,
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = useCallback(() => setRefreshKey((value) => value + 1), []);
+  useEffect(() => {
+    const timer = window.setInterval(() => { if (!document.hidden) refresh(); }, 10000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
 
   useEffect(() => {
     const linkedCamera = sessionStorage.getItem("drishti-visual-camera");

@@ -307,7 +307,7 @@ export function StreamFederationPage({ overviewStatistics, onStatisticsChanged }
     <div className="page federation-page">
       <header className="federation-hero">
         <div className="federation-hero__copy">
-          <div className="page-header__context"><span>P0.3 Federation control plane</span><i />Vendor-neutral stream onboarding</div>
+          <div className="page-header__context"><span>Federation control plane</span><i />Vendor-neutral stream onboarding</div>
           <h1>Stream Federation</h1>
           <p>Normalize heterogeneous CCTV and VMS sources into encrypted connection profiles, prove bounded reachability, and supervise safe browser media delivery without exposing camera endpoints.</p>
           <div className="federation-hero__trust">
@@ -352,7 +352,7 @@ export function StreamFederationPage({ overviewStatistics, onStatisticsChanged }
 
       <section className="runtime-overview" aria-label="Browser media runtime posture">
         <header className="runtime-overview__header">
-          <div><span className="runtime-overview__icon"><Play size={18} /></span><span><small className="panel-kicker">P0.3R / Supervised delivery</small><h2>Browser media runtime</h2><p>Same-origin HLS delivery with watchdog supervision. This proves browser playback, not AI analytics.</p></span></div>
+          <div><span className="runtime-overview__icon"><Play size={18} /></span><span><small className="panel-kicker">Supervised delivery</small><h2>Browser media runtime</h2><p>Same-origin HLS delivery with watchdog supervision. This proves browser playback, not AI analytics.</p></span></div>
           {runtimeLoading ? <span className="runtime-availability runtime-availability--loading"><LoaderCircle className="spin" size={14} />Checking runtime</span> : <span className={`runtime-availability${runtimeCapabilities?.available ? " runtime-availability--available" : ""}`}>{runtimeCapabilities?.available ? <CheckCircle2 size={14} /> : <CircleOff size={14} />}{runtimeCapabilities?.available ? "Runtime available" : "Runtime unavailable"}</span>}
         </header>
         {runtimeLoading && !runtimeCapabilities ? <RuntimeOverviewSkeleton /> : runtimeCapabilities?.available ? (

@@ -36,6 +36,7 @@ from app.db import Base, SessionLocal, engine
 from app.errors import RegistryError
 from app.federation.security import load_or_create_development_key
 from app.media import MediaRuntimeManager, RuntimeConfig
+from app.services.health_sync import LiveHealthSync
 from app.services.live_intelligence import LiveIntelligenceRouter
 from app.services.visual_intelligence import GroqVisionProvider, VisualIntelligenceEngine
 from app.stream_engine import StreamEngine, StreamEngineConfig
@@ -221,6 +222,8 @@ def create_app(
     analytics_worker.set_vehicle_evidence_callback(route_vehicle_evidence)
     analytics_worker.set_plate_evidence_callback(live_intelligence.queue_plate)
 
+    health_sync = LiveHealthSync(stream_engine, SessionLocal)
+
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         if should_initialize:
@@ -231,9 +234,12 @@ def create_app(
         live_intelligence.startup()
         visual_intelligence.startup()
         analytics_worker.startup()
+        if app_settings.app_env != "test":
+            health_sync.startup()
         try:
             yield
         finally:
+            health_sync.shutdown()
             analytics_worker.shutdown()
             visual_intelligence.shutdown()
             live_intelligence.shutdown()

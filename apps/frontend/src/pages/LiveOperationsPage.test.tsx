@@ -101,7 +101,7 @@ const session = {
   preview_url: "/api/v1/streams/camera-1/preview.mjpg",
 };
 
-describe("P04 live operations page", () => {
+describe("live operations page", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("shows real stream telemetry, camera details and an honest AI handoff state", async () => {
@@ -149,7 +149,7 @@ describe("P04 live operations page", () => {
     expect(await screen.findByRole("heading", { name: "Live Operations Matrix" })).toBeInTheDocument();
     expect(await screen.findByText("Ashram Road ANPR")).toBeInTheDocument();
     expect(screen.getByText("FFmpeg ready")).toBeInTheDocument();
-    expect(screen.getByText("P05 consumer interface ready")).toBeInTheDocument();
+    expect(screen.getByText("consumer interface ready")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Continuous live feed from Ashram Road ANPR" }))
       .toHaveAttribute("src", expect.stringContaining("/preview.mjpg"));
 
@@ -158,7 +158,7 @@ describe("P04 live operations page", () => {
     fireEvent.click(tile!);
     const inspector = screen.getByText("Camera intelligence").closest("aside");
     expect(inspector).not.toBeNull();
-    expect(within(inspector!).getByText("P04 frame bus ready")).toBeInTheDocument();
+    expect(within(inspector!).getByText("frame bus ready")).toBeInTheDocument();
     expect(within(inspector!).getByText("Hikvision · DS-Test")).toBeInTheDocument();
     expect(within(inspector!).getByText("11.8 fps")).toBeInTheDocument();
 

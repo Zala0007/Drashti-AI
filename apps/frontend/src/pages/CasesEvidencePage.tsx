@@ -105,7 +105,7 @@ export function CasesEvidencePage() {
 
   return <div className="advanced-page case-page">
     <section className="advanced-masthead">
-      <div><span className="advanced-emblem"><BriefcaseBusiness size={25} /><i /></span><span><small>P-S02 · Restricted workspace</small><h1>Case & Evidence Management</h1><p>Investigation records, controlled evidence references and immutable activity context.</p></span></div>
+      <div><span className="advanced-emblem"><BriefcaseBusiness size={25} /><i /></span><span><small>· Restricted workspace</small><h1>Case & Evidence Management</h1><p>Investigation records, controlled evidence references and immutable activity context.</p></span></div>
       <aside><LockKeyhole size={17} /><span><small>Access posture</small><strong>Assigned investigator · audited actions</strong></span></aside>
     </section>
     {error ? <div className="advanced-alert" role="alert"><FileKey2 size={16} />{error}</div> : null}

@@ -91,12 +91,20 @@ class CameraHealthService:
         self.session.commit()
         return self._aggregate_read(aggregate, camera)
 
-    def capture_live_snapshot(self) -> HealthDashboard:
-        sessions = {snapshot.camera.id: snapshot for snapshot in self.engine.list()}
+    def capture_live_snapshot(self, *, only_streams: bool = False) -> HealthDashboard:
+        # Engine history is newest first; never overwrite a live session with
+        # an older stopped session belonging to the same camera.
+        sessions = {}
+        for snapshot in sorted(self.engine.list(), key=lambda item: item.created_at, reverse=True):
+            sessions.setdefault(snapshot.camera.id, snapshot)
         now = datetime.now(UTC)
         cameras = list(self.session.scalars(select(Camera).order_by(Camera.camera_code)))
         for camera in cameras:
+            if camera.status == "retired":
+                continue
             snapshot = sessions.get(camera.id)
+            if only_streams and snapshot is None:
+                continue
             if snapshot:
                 metrics = snapshot.metrics
                 availability = (
@@ -198,7 +206,7 @@ class CameraHealthService:
             findings=[self._maintenance_read(item) for item in findings],
             incidents=[HealthIncidentRead.model_validate(item) for item in incidents],
             telemetry_basis=(
-                "Latest persisted 5-minute aggregates from the P04 stream engine, edge "
+                "Latest persisted 5-minute aggregates from the stream engine, edge "
                 "aggregators, or registry heartbeats. No random health values are generated."
             ),
         )

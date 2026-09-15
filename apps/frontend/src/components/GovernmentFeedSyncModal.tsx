@@ -81,7 +81,7 @@ export function GovernmentFeedSyncModal({ open, onClose, onSynced }: GovernmentF
       onClose={close}
       busy={syncing}
       title="Government evaluation feed grid"
-      eyebrow="P0.3 / Dynamic catalogue federation"
+      eyebrow="Dynamic catalogue federation"
       wide
     >
       <div className="modal__body government-feed-sync">

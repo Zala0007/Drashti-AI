@@ -60,7 +60,7 @@ export function CoverageIntelligencePage() {
   const metrics = analysis?.metrics ?? {};
   return <div className="advanced-page coverage-page">
     <section className="advanced-masthead coverage-masthead">
-      <div><span className="advanced-emblem"><MapPinned size={25} /><i /></span><span><small>P-S04 · Planning intelligence</small><h1>Coverage Intelligence</h1><p>Registry-backed resilience gaps, critical nodes and transparent deployment candidates.</p></span></div>
+      <div><span className="advanced-emblem"><MapPinned size={25} /><i /></span><span><small>· Planning intelligence</small><h1>Coverage Intelligence</h1><p>Registry-backed resilience gaps, critical nodes and transparent deployment candidates.</p></span></div>
       <button className="button button--primary" type="button" disabled={busy} onClick={() => void analyze()}>{busy ? <LoaderCircle className="spin" size={16} /> : <RefreshCw size={16} />}Run fresh analysis</button>
     </section>
     {error ? <div className="advanced-alert"><TriangleAlert size={16} />{error}</div> : null}

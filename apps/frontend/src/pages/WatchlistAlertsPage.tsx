@@ -114,7 +114,7 @@ export function WatchlistAlertsPage() {
     <section className="watchlist-masthead">
       <div className="watchlist-masthead__identity">
         <span className="watchlist-signal"><BellRing size={25} /><i /><b /></span>
-        <div><span className="panel-kicker">P-S05 | Continuous ANPR cross-reference</span><h1>Watchlist Alert Command</h1><p>Live hybrid-OCR matches, camera evidence and accountable response workflow.</p></div>
+        <div><span className="panel-kicker">Continuous ANPR cross-reference</span><h1>Watchlist Alert Command</h1><p>Live hybrid-OCR matches, camera evidence and accountable response workflow.</p></div>
       </div>
       <aside><span><i />Matching engine active</span><strong>{dashboard.new_alerts} new alert{dashboard.new_alerts === 1 ? "" : "s"}</strong><small>{dashboard.active_entries} active / {dashboard.total_entries} total watch entries</small></aside>
     </section>

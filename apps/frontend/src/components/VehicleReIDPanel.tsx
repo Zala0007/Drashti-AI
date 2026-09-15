@@ -106,7 +106,7 @@ export function VehicleReIDPanel({
       <header className="reid-console__header">
         <div className="reid-console__title">
           <span className="reid-console__scanner"><ScanLine size={24} /><i /></span>
-          <div><span className="panel-kicker">P-S01 · Human-reviewed intelligence</span><h2>Vehicle Re-Identification</h2><p>Recover a target when the registration is hidden, unreadable, or changed.</p></div>
+          <div><span className="panel-kicker">· Human-reviewed intelligence</span><h2>Vehicle Re-Identification</h2><p>Recover a target when the registration is hidden, unreadable, or changed.</p></div>
         </div>
         <div className="reid-console__posture"><ShieldCheck size={16} /><span><small>Decision boundary</small><strong>Machine ranks · investigator confirms</strong></span></div>
       </header>

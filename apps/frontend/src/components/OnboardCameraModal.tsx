@@ -74,7 +74,7 @@ export function OnboardCameraModal({ open, departments, onClose, onCreated, onDe
   };
 
   return (
-    <Modal open={open} onClose={close} title="Register camera asset" eyebrow="P0.1 · Manual onboarding" wide busy={submitting}>
+    <Modal open={open} onClose={close} title="Register camera asset" eyebrow="· Manual onboarding" wide busy={submitting}>
       <form className="camera-form" onSubmit={submit} noValidate>
         <div className="modal__body">
           {submitError ? <div className="form-alert" role="alert"><AlertCircle aria-hidden="true" size={18} /><span><strong>Registration not completed</strong>{submitError}</span></div> : null}

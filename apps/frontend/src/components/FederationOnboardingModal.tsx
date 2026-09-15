@@ -206,7 +206,7 @@ export function FederationOnboardingModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} busy={submitting} title={result ? "Connection profile secured" : "Onboard a federated stream"} eyebrow="P0.3 / Secure federation" wide>
+    <Modal open={open} onClose={onClose} busy={submitting} title={result ? "Connection profile secured" : "Onboard a federated stream"} eyebrow="Secure federation" wide>
       {result ? (
         <div className="federation-success" role="status">
           <span className="federation-success__icon"><CheckCircle2 aria-hidden="true" size={28} /></span>
